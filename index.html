@@ -3,727 +3,316 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>SIMANTAP</title>
-<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
+<title>SIMANTAP - Work Order Dashboard</title>
+
+<!-- Tailwind CSS -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<!-- Google Fonts -->
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Hanken+Grotesk:wght@600;700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+<!-- Material Symbols -->
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
+
+<script id="tailwind-config">
+  tailwind.config = {
+    darkMode: "class",
+    theme: {
+      extend: {
+        colors: {
+          "on-tertiary": "#ffffff",
+          "surface-container-high": "#dce9ff",
+          "surface-container": "#e5eeff",
+          "on-secondary": "#ffffff",
+          "on-primary": "#ffffff",
+          "surface-bright": "#f8f9ff",
+          "surface-dim": "#cbdbf5",
+          "background": "#f8f9ff",
+          "on-primary-container": "#eeefff",
+          "outline": "#737686",
+          "surface-container-low": "#eff4ff",
+          "surface-variant": "#d3e4fe",
+          "on-background": "#0b1c30",
+          "surface-container-highest": "#d3e4fe",
+          "inverse-surface": "#213145",
+          "surface-tint": "#0053db",
+          "error-container": "#ffdad6",
+          "error": "#ba1a1a",
+          "secondary-container": "#6cf8bb",
+          "on-secondary-container": "#00714d",
+          "on-surface": "#0b1c30",
+          "on-primary-fixed": "#00174b",
+          "primary-container": "#2563eb",
+          "on-error": "#ffffff",
+          "on-error-container": "#93000a",
+          "inverse-primary": "#b4c5ff",
+          "primary": "#004ac6",
+          "inverse-on-surface": "#eaf1ff",
+          "surface-container-lowest": "#ffffff",
+          "outline-variant": "#c3c6d7",
+          "surface": "#f8f9ff",
+          "secondary": "#006c49",
+          "on-surface-variant": "#434655"
+        },
+        borderRadius: { DEFAULT: "0.25rem", lg: "0.5rem", xl: "0.75rem", full: "9999px" },
+        spacing: {
+          xs: "0.25rem", sm: "0.5rem", md: "1rem", lg: "1.5rem", xl: "2rem",
+          gutter: "1.5rem", "margin-mobile": "1rem", "margin-desktop": "2.5rem"
+        },
+        fontFamily: {
+          "label-md": ["JetBrains Mono"],
+          "body-md": ["Inter"],
+          "body-lg": ["Inter"],
+          "headline-lg": ["Hanken Grotesk"],
+          "headline-sm": ["Hanken Grotesk"],
+          "headline-md": ["Hanken Grotesk"]
+        },
+        fontSize: {
+          "label-md": ["12px", { lineHeight: "16px", letterSpacing: "0.05em", fontWeight: "500" }],
+          "body-md": ["14px", { lineHeight: "20px", fontWeight: "400" }],
+          "body-lg": ["16px", { lineHeight: "24px", fontWeight: "400" }],
+          "headline-lg": ["32px", { lineHeight: "40px", letterSpacing: "-0.02em", fontWeight: "700" }],
+          "headline-sm": ["20px", { lineHeight: "28px", fontWeight: "600" }],
+          "headline-md": ["24px", { lineHeight: "32px", letterSpacing: "-0.01em", fontWeight: "600" }]
+        }
+      }
+    }
+  }
+</script>
+
 <style>
-  :root {
-    --text-main: #ffffff;
-    --text-muted: #a0aec0;
-    --glass-bg: rgba(20, 25, 35, 0.55);
-    --glass-border: rgba(255, 255, 255, 0.15);
-    --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
-    --accent-blue: #3182ce;
-    --accent-orange: #dd6b20;
-    --accent-green: #38a169;
-    --rejected: #e53e3e;
-  }
-  
-  * { 
-    box-sizing: border-box; 
-  }
-  
-  body {
-    margin: 0;
-    font-family: 'Poppins', sans-serif;
-    color: var(--text-main);
-    min-height: 100vh;
-    background: linear-gradient(-45deg, #0b192c, #1a365d, #5c3a21, #0f3a24);
-    background-size: 400% 400%;
-    animation: gradientBG 15s ease infinite;
-  }
-
-  @keyframes gradientBG {
-    0% { background-position: 0% 50%; }
-    50% { background-position: 100% 50%; }
-    100% { background-position: 0% 50%; }
-  }
-
-  .global-logos {
-    position: absolute;
-    top: 24px;
-    right: 32px;
-    display: flex;
-    gap: 16px;
-    z-index: 100;
-  }
-
-  .global-logos img {
-    height: 170px; 
-    object-fit: contain;
-    background: transparent; 
-    padding: 0; 
-    border-radius: 0; 
-    filter: drop-shadow(0px 0px 4px rgba(255, 255, 255, 0.9)) 
-            drop-shadow(0px 0px 15px rgba(255, 255, 255, 0.5));
-  }
-
-  header {
-    padding: 64px 24px 24px;
-    text-align: center;
-  }
-
-  header h1 {
-    font-size: clamp(28px, 4vw, 44px);
-    margin: 0;
-    font-weight: 700;
-    letter-spacing: 1px;
-    text-shadow: 0 2px 10px rgba(0,0,0,0.5);
-  }
-
-  header p {
-    color: var(--text-muted);
-    margin-top: 10px;
-    font-weight: 300;
-  }
-  
-  main {
-    max-width: 900px;
-    margin: 0 auto;
-    padding: 0 24px 64px;
-  }
-  
-  .glass-panel {
-    background: var(--glass-bg);
-    backdrop-filter: blur(16px);
-    -webkit-backdrop-filter: blur(16px);
-    border: 1px solid var(--glass-border);
-    border-radius: 16px;
-    box-shadow: var(--glass-shadow);
-  }
-
-  .main-menu {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 16px;
-    margin-bottom: 24px;
-  }
-
-  @media (max-width: 768px) {
-    .main-menu { 
-      grid-template-columns: 1fr 1fr; 
-    }
-    .global-logos {
-      position: static;
-      justify-content: center;
-      padding-top: 24px;
-      margin-bottom: -30px;
-    }
-  }
-
-  .btn-main {
-    padding: 16px 10px;
-    font-size: 15px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.3s ease;
-    font-family: inherit;
-    color: var(--text-muted);
-  }
-
-  .btn-main.active {
-    color: #fff;
-    border-color: var(--accent-blue);
-    background: rgba(49, 130, 206, 0.2);
-    box-shadow: 0 0 20px rgba(49, 130, 206, 0.4);
-    transform: translateY(-2px);
-  }
-
-  .btn-main:hover:not(.active) { 
-    background: rgba(255, 255, 255, 0.1); 
-    color: #fff;
-  }
-
-  .sub-menu {
-    display: flex;
-    gap: 12px;
-    margin-bottom: 24px;
-    justify-content: center;
-    flex-wrap: wrap; 
-  }
-
-  .btn-sub {
-    padding: 8px 20px;
-    border: 1px solid var(--glass-border);
-    border-radius: 99px;
-    background: rgba(0,0,0,0.3);
-    font-size: 13px;
-    font-weight: 600;
-    cursor: pointer;
-    color: var(--text-muted);
-    transition: all 0.3s ease;
-  }
-
-  .btn-sub.active {
-    background: linear-gradient(135deg, var(--accent-blue), var(--accent-green));
-    color: #fff;
-    border-color: transparent;
-    box-shadow: 0 4px 15px rgba(56, 161, 105, 0.4);
-  }
-
-  .filter-bar {
-    display: flex;
-    gap: 12px;
-    margin-bottom: 24px;
-    align-items: center;
-    padding: 16px 20px;
-    flex-wrap: wrap;
-  }
-
-  .filter-bar select, .filter-bar input {
-    padding: 10px 14px;
-    border: 1px solid var(--glass-border);
-    border-radius: 8px;
-    font-family: inherit;
-    font-size: 13px;
-    background: rgba(0, 0, 0, 0.4);
-    color: #fff;
-    transition: all 0.2s;
-  }
-
-  .filter-bar select option { 
-    background: #1a202c; 
-    color: #fff; 
-  }
-
-  .filter-bar select:focus, .filter-bar input:focus {
-    outline: none;
-    border-color: var(--accent-orange);
-    box-shadow: 0 0 10px rgba(221, 107, 32, 0.4);
-  }
-
-  .filter-bar button {
-    padding: 10px 16px;
-    background: var(--accent-orange);
-    color: #fff;
-    cursor: pointer;
-    font-weight: 600;
-    border: none;
-    border-radius: 8px;
-    font-family: inherit;
-    transition: all 0.2s;
-  }
-
-  .filter-bar button:hover { 
-    background: #c05621;
-    box-shadow: 0 0 15px rgba(221, 107, 32, 0.6);
-  }
-
-  .panel {
-    padding: 30px;
-    min-height: 200px;
-  }
-
-  .panel h2 { 
-    margin: 0 0 6px; 
-    font-size: 22px; 
-    text-transform: capitalize; 
-    font-weight: 600; 
-  }
-
-  .panel .count { 
-    font-size: 13px; 
-    color: var(--text-muted); 
-    margin-bottom: 24px; 
-  }
-  
-  ul.data-list {
-    list-style: none; 
-    margin: 0; 
-    padding: 0; 
-    display: grid; 
-    gap: 12px;
-  }
-
-  ul.data-list li {
-    display: flex; 
-    align-items: center; 
-    gap: 16px;
-    padding: 16px; 
-    border: 1px solid var(--glass-border);
-    border-radius: 12px; 
-    background: rgba(0, 0, 0, 0.2);
-    font-size: 14px; 
-    cursor: pointer; 
-    transition: all 0.2s ease;
-  }
-
-  ul.data-list li:hover {
-    transform: translateX(6px);
-    background: rgba(255, 255, 255, 0.08);
-    border-color: var(--accent-blue);
-    box-shadow: 0 4px 15px rgba(49, 130, 206, 0.2);
-  }
-
-  ul.data-list li .num {
-    width: 32px; 
-    height: 32px; 
-    border-radius: 50%;
-    background: linear-gradient(135deg, var(--accent-orange), #c05621);
-    color: #fff; 
-    font-size: 13px; 
-    font-weight: 600;
-    display: flex; 
-    align-items: center; 
-    justify-content: center; 
-    flex-shrink: 0;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.4);
-  }
-  
-  .list-text { flex-grow: 1; }
-  
-  /* Desain Badge Identitas untuk Master WO */
-  .id-badges { display: flex; gap: 8px; margin-top: 6px; flex-wrap: wrap; }
-  .badge { padding: 4px 8px; border-radius: 4px; font-size: 10px; text-transform: uppercase; font-weight: 600; letter-spacing: 0.5px; border: 1px solid transparent; }
-  
-  .badge.cat-mechanical { background: rgba(221, 107, 32, 0.2); border-color: var(--accent-orange); color: #fbd38d; }
-  .badge.cat-electrical { background: rgba(49, 130, 206, 0.2); border-color: var(--accent-blue); color: #90cdf4; }
-  .badge.cat-modification { background: rgba(128, 90, 213, 0.2); border-color: #805ad5; color: #d6bcfa; }
-  
-  .badge.stat-approved { background: rgba(56, 161, 105, 0.2); border-color: var(--accent-green); color: #9ae6b4; }
-  .badge.stat-pending_finished { background: rgba(214, 158, 46, 0.2); border-color: #d69e2e; color: #fefcbf; }
-  .badge.stat-finished { background: rgba(49, 151, 149, 0.2); border-color: #319795; color: #81e6d9; }
-
-  .placeholder, .state { 
-    color: var(--text-muted); 
-    font-size: 14px; 
-    padding: 20px 0; 
-    text-align: center; 
-  }
-
-  .state.error { 
-    color: #fc8181; 
-  }
-
-  /* Modal Detail */
+  body { font-family: 'Inter', sans-serif; -webkit-font-smoothing: antialiased; }
+  .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
+  .custom-shadow { box-shadow: 0px 4px 20px rgba(0,0,0,0.04); }
   .modal-overlay {
-    display: none;
-    position: fixed; 
-    top: 0; 
-    left: 0; 
-    width: 100%; 
-    height: 100%;
-    background: rgba(0,0,0,0.7);
-    backdrop-filter: blur(5px);
-    z-index: 1000;
-    align-items: center; 
-    justify-content: center;
-    padding: 20px;
+    display: none; position: fixed; inset: 0; background: rgba(11,28,48,0.45);
+    backdrop-filter: blur(4px); z-index: 1000; align-items: center; justify-content: center; padding: 16px;
   }
-
-  .modal-content {
-    width: 100%; 
-    max-width: 600px;
-    max-height: 85vh;
-    display: flex; 
-    flex-direction: column;
-    position: relative;
-  }
-
-  .modal-header {
-    padding: 24px; 
-    border-bottom: 1px solid var(--glass-border);
-    display: flex; 
-    justify-content: space-between; 
-    align-items: center;
-    background: rgba(0,0,0,0.2);
-    border-radius: 16px 16px 0 0;
-  }
-
-  .modal-header h3 { 
-    margin: 0; 
-    font-size: 18px; 
-    font-weight: 600; 
-  }
-
-  .close-btn {
-    background: none; 
-    border: none; 
-    font-size: 28px; 
-    cursor: pointer; 
-    color: var(--text-muted);
-    transition: color 0.2s;
-  }
-
-  .close-btn:hover { 
-    color: #fff; 
-  }
-
-  .modal-body {
-    padding: 24px; 
-    overflow-y: auto;
-    border-radius: 0 0 16px 16px;
-  }
-  
-  .role-badge {
-    display: inline-block;
-    font-size: 11px;
-    padding: 4px 10px;
-    border-radius: 4px;
-    background: rgba(255,255,255,0.1);
-    margin-bottom: 10px;
-    letter-spacing: 1px;
-    text-transform: uppercase;
-  }
-  
-  .action-footer {
-    margin-top: 24px;
-    padding-top: 16px;
-    border-top: 1px dashed rgba(255,255,255,0.2);
-    display: flex;
-    gap: 12px;
-    flex-wrap: wrap;
-  }
-
-  .btn-action {
-    flex: 1;
-    min-width: 140px;
-    padding: 12px;
-    font-weight: 600;
-    border-radius: 8px;
-    border: none;
-    cursor: pointer;
-    font-family: inherit;
-    font-size: 14px;
-    color: #fff;
-    transition: opacity 0.2s;
-  }
-
-  .btn-action:hover { 
-    opacity: 0.8; 
-  }
-
-  .btn-approve { background: var(--accent-green); }
-  .btn-reject { background: var(--rejected); }
-  .btn-action:disabled { opacity: 0.5; cursor: not-allowed; }
-
-  .detail-row {
-    display: flex; 
-    flex-direction: column; 
-    gap: 6px;
-    margin-bottom: 16px; 
-    padding-bottom: 16px; 
-    border-bottom: 1px solid rgba(255,255,255,0.08);
-  }
-
-  .detail-row:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
-  .detail-label { font-size: 11px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; }
-  .detail-value { font-size: 15px; color: #fff; white-space: pre-wrap; font-weight: 300; }
-
-  /* Form Aksi: Biaya bertahap & Upload Foto */
-  .form-section-label {
-    font-size: 12px; font-weight: 600; color: var(--text-muted);
-    text-transform: uppercase; letter-spacing: 1px; margin: 0 0 10px;
-  }
-
-  .biaya-row {
-    display: grid;
-    grid-template-columns: 1fr 140px 36px;
-    gap: 8px;
-    margin-bottom: 8px;
-    align-items: center;
-  }
-
-  .biaya-row input {
-    padding: 10px 12px;
-    border: 1px solid var(--glass-border);
-    border-radius: 8px;
-    font-family: inherit;
-    font-size: 13px;
-    background: rgba(0,0,0,0.35);
-    color: #fff;
-  }
-
-  .biaya-row input:focus { outline: none; border-color: var(--accent-blue); }
-
-  .btn-remove-row {
-    width: 36px; height: 36px;
-    border-radius: 8px;
-    border: 1px solid var(--rejected);
-    background: rgba(229, 62, 62, 0.15);
-    color: #fc8181;
-    cursor: pointer;
-    font-size: 16px;
-    font-family: inherit;
-    line-height: 1;
-  }
-  .btn-remove-row:hover { background: rgba(229, 62, 62, 0.35); }
-
-  .btn-add-row {
-    margin-top: 4px;
-    padding: 10px 16px;
-    border-radius: 8px;
-    border: 1px dashed var(--glass-border);
-    background: rgba(255,255,255,0.05);
-    color: var(--text-muted);
-    cursor: pointer;
-    font-family: inherit;
-    font-size: 13px;
-    font-weight: 600;
-    width: 100%;
-  }
-  .btn-add-row:hover { color: #fff; border-color: var(--accent-blue); background: rgba(49,130,206,0.1); }
-
-  .biaya-total-row {
-    display: flex; justify-content: space-between; align-items: center;
-    margin-top: 12px; padding-top: 12px;
-    border-top: 1px dashed rgba(255,255,255,0.2);
-    font-size: 14px; font-weight: 600;
-  }
-  .biaya-total-row span.amount { color: var(--accent-green); font-size: 17px; }
-
-  .form-divider { margin: 24px 0; border-top: 1px dashed rgba(255,255,255,0.15); }
-
-  .photo-input-wrap input[type="file"] {
-    width: 100%;
-    padding: 10px 12px;
-    border: 1px dashed var(--glass-border);
-    border-radius: 8px;
-    background: rgba(0,0,0,0.25);
-    color: var(--text-muted);
-    font-size: 12px;
-    font-family: inherit;
-  }
-
-  .photo-preview-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
-    gap: 10px;
-    margin-top: 12px;
-  }
-
-  .photo-thumb {
-    position: relative;
-    border-radius: 8px;
-    overflow: hidden;
-    border: 1px solid var(--glass-border);
-    aspect-ratio: 1 / 1;
-  }
-  .photo-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
-  .photo-thumb .btn-remove-photo {
-    position: absolute; top: 4px; right: 4px;
-    width: 22px; height: 22px; border-radius: 50%;
-    background: rgba(0,0,0,0.7); color: #fff; border: none;
-    cursor: pointer; font-size: 13px; line-height: 1;
-  }
-
-  textarea.form-textarea {
-    width: 100%;
-    padding: 12px 14px;
-    border: 1px solid var(--glass-border);
-    border-radius: 8px;
-    background: rgba(0,0,0,0.3);
-    color: #fff;
-    font-family: inherit;
-    font-size: 13px;
-    resize: vertical;
-    min-height: 80px;
-  }
-  textarea.form-textarea:focus { outline: none; border-color: var(--accent-blue); }
-
-  .form-footer {
-    margin-top: 24px;
-    padding-top: 16px;
-    border-top: 1px dashed rgba(255,255,255,0.2);
-    display: flex;
-    gap: 12px;
-  }
-
-  .upload-progress {
-    font-size: 12px; color: var(--text-muted); margin-top: 10px; text-align: center;
-  }
-
-  /* Layar Login */
-  #login-screen {
-    min-height: 100vh;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 24px;
-  }
-
-  .login-box {
-    width: 100%;
-    max-width: 380px;
-    padding: 40px 32px;
-    text-align: center;
-  }
-
-  .login-box h1 { margin: 0 0 8px; font-size: 28px; font-weight: 700; }
-
-  #login-form {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    text-align: left;
-    margin-top: 28px;
-  }
-
-  #login-form label { font-size: 13px; color: var(--text-muted); margin-top: 8px; font-weight: 600; }
-  #login-form input {
-    padding: 12px 16px;
-    border: 1px solid var(--glass-border);
-    border-radius: 8px;
-    font-size: 14px;
-    font-family: inherit;
-    background: rgba(0,0,0,0.3);
-    color: #fff;
-  }
-  #login-form input:focus { outline: none; border-color: var(--accent-blue); box-shadow: 0 0 12px rgba(49, 130, 206, 0.4); }
-
-  #login-submit {
-    margin-top: 24px;
-    padding: 14px;
-    border: none;
-    border-radius: 8px;
-    background: linear-gradient(135deg, var(--accent-blue), #2b6cb0);
-    color: #fff;
-    cursor: pointer;
-    font-weight: 600;
-    font-family: inherit;
-    font-size: 15px;
-    transition: all 0.2s;
-  }
-  #login-submit:hover { box-shadow: 0 0 15px rgba(49, 130, 206, 0.6); transform: translateY(-1px); }
-
-  .logout-btn {
-    margin-top: 20px;
-    padding: 10px 24px;
-    border: 1px solid var(--glass-border);
-    border-radius: 8px;
-    background: rgba(0,0,0,0.3);
-    font-size: 13px;
-    cursor: pointer;
-    color: #fff;
-    font-family: inherit;
-    transition: all 0.2s;
-  }
-  .logout-btn:hover { background: rgba(229, 62, 62, 0.8); border-color: transparent; }
-  .login-msg { color: #fc8181; font-size: 13px; margin-top: 12px; text-align: center; }
-
+  .modal-content { width: 100%; max-width: 620px; max-height: 88vh; display: flex; flex-direction: column; }
+  .modal-body { overflow-y: auto; }
   ::-webkit-scrollbar { width: 8px; }
-  ::-webkit-scrollbar-track { background: rgba(0,0,0,0.1); border-radius: 4px; }
-  ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 4px; }
-  ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.4); }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: #c3c6d7; border-radius: 4px; }
+  ::-webkit-scrollbar-thumb:hover { background: #9aa0b4; }
 </style>
 </head>
-<body>
+<body class="text-on-background bg-background min-h-screen">
 
-<!-- Logo Global -->
-<div class="global-logos">
-  <img src="logo inl (3).png" alt="Logo INL">
-</div>
-
-<!-- Layar Login -->
-<div id="login-screen">
-  <div class="login-box glass-panel">
-    <h1>SIMANTAP</h1>
-    <p style="color:var(--text-muted); font-size:14px; margin:0;">Silakan masuk untuk melanjutkan</p>
-    <form id="login-form">
-      <label>ID</label>
-      <input type="text" id="login-username" required>
-      <label>Password</label>
-      <input type="password" id="login-password" required>
-      <button type="submit" id="login-submit">Masuk</button>
-      <div class="login-msg" id="login-msg"></div>
+<!-- ============================================================ -->
+<!-- LAYAR LOGIN -->
+<!-- ============================================================ -->
+<div id="login-screen" class="min-h-screen flex items-center justify-center px-margin-mobile">
+  <div class="w-full max-w-sm bg-surface-container-lowest rounded-xl custom-shadow border border-outline-variant/30 p-xl">
+    <div class="flex flex-col items-center text-center mb-lg">
+      <span class="text-headline-md font-headline-md font-bold text-primary">SIMANTAP</span>
+      <span class="text-[10px] uppercase tracking-widest text-outline mt-1 font-bold">Industrial Work Order</span>
+      <p class="font-body-md text-body-md text-on-surface-variant mt-md">Silakan masuk untuk melanjutkan</p>
+    </div>
+    <form id="login-form" class="flex flex-col gap-md">
+      <div>
+        <label class="block font-label-md text-label-md text-outline uppercase mb-xs">ID</label>
+        <input type="text" id="login-username" required
+          class="w-full px-md py-sm bg-surface rounded-lg border border-outline-variant focus:ring-primary focus:border-primary font-body-md text-body-md outline-none">
+      </div>
+      <div>
+        <label class="block font-label-md text-label-md text-outline uppercase mb-xs">Password</label>
+        <input type="password" id="login-password" required
+          class="w-full px-md py-sm bg-surface rounded-lg border border-outline-variant focus:ring-primary focus:border-primary font-body-md text-body-md outline-none">
+      </div>
+      <button type="submit" id="login-submit"
+        class="mt-sm px-lg py-sm bg-primary text-on-primary rounded-lg font-body-md text-body-md font-semibold hover:opacity-90 transition-opacity">
+        Masuk
+      </button>
+      <div class="font-body-md text-body-md text-error text-center" id="login-msg"></div>
     </form>
   </div>
 </div>
 
-<!-- Konten Utama Dashboard -->
+<!-- ============================================================ -->
+<!-- KONTEN UTAMA DASHBOARD -->
+<!-- ============================================================ -->
 <div id="app-content" style="display:none;">
-  <header>
-    <h1>SIMANTAP</h1>
-    <p>Pantau keseluruhan tiket Work Order secara realtime.</p>
-    
-    <div id="user-role-badge" class="role-badge"></div><br>
-    
-    <button id="logout-btn" class="logout-btn">Keluar Dashboard</button>
+
+  <header class="sticky top-0 z-50 bg-surface-container-lowest shadow-sm">
+    <div class="flex justify-between items-center w-full px-margin-desktop py-md max-w-7xl mx-auto">
+      <div class="flex items-center gap-md">
+        <div class="flex flex-col">
+          <span class="text-headline-md font-headline-md font-bold text-primary">SIMANTAP</span>
+          <span class="text-[10px] uppercase tracking-widest text-outline -mt-1 font-bold">Industrial Work Order</span>
+        </div>
+      </div>
+      <div class="flex items-center gap-md">
+        <div id="user-role-badge" class="hidden sm:flex items-center gap-xs px-md py-sm rounded-lg bg-surface-container-high text-on-surface-variant font-body-md text-body-md font-semibold">
+          <span class="material-symbols-outlined text-[18px]">account_circle</span>
+          <span id="user-role-badge-text"></span>
+        </div>
+        <button id="logout-btn" class="px-md py-sm rounded-lg bg-error-container text-on-error-container hover:bg-error hover:text-on-error transition-all font-body-md text-body-md font-semibold">
+          Keluar Dashboard
+        </button>
+      </div>
+    </div>
   </header>
 
-  <main>
-    <!-- Menu Utama -->
-    <div class="main-menu">
-      <button class="btn-main glass-panel active" data-category="master">Master WO</button>
-      <button class="btn-main glass-panel" data-category="mechanical">Mechanical</button>
-      <button class="btn-main glass-panel" data-category="electrical">Electrical</button>
-      <button class="btn-main glass-panel" data-category="modification">Modification</button>
-    </div>
+  <main class="max-w-7xl mx-auto px-margin-desktop py-xl">
 
-    <!-- Sub Menu -->
-    <div class="sub-menu" id="sub-menu-container" style="display:none;">
-      <button class="btn-sub active" data-status="pending">Pending Approval</button>
-      <button class="btn-sub" data-status="approved">On Progress</button>
-      <button class="btn-sub" data-status="pending_finished">Pending Finished</button>
-      <button class="btn-sub" data-status="finished">Finished</button>
-      <button class="btn-sub" data-status="rejected">Rejected</button>
-    </div>
-
-    <!-- Filter Waktu -->
-    <div class="filter-bar glass-panel">
-      <select id="filter-type">
-        <option value="all">Semua Waktu</option>
-        <option value="single">Tanggal Tertentu</option>
-        <option value="range">Rentang Tanggal</option>
-      </select>
-      
-      <div id="filter-date-1-container" style="display:none; align-items:center; gap:8px;">
-        <span style="font-size:13px; color:var(--text-muted);">Tgl:</span>
-        <input type="date" id="filter-date-1">
+    <!-- Hero -->
+    <section class="mb-xl text-center md:text-left">
+      <div class="flex flex-col md:flex-row md:items-end justify-between gap-lg">
+        <div>
+          <h1 class="font-headline-lg text-headline-lg text-on-background mb-sm">Pantau Tiket Real-time</h1>
+          <p class="font-body-lg text-body-lg text-on-surface-variant max-w-2xl">
+            Sistem Manajemen Operasional Terpadu untuk pemeliharaan dan pemantauan infrastruktur.
+          </p>
+        </div>
+        <div class="inline-flex items-center gap-sm bg-surface-container-low px-md py-sm rounded-full self-center md:self-start">
+          <span class="relative flex h-3 w-3">
+            <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-secondary opacity-75"></span>
+            <span class="relative inline-flex rounded-full h-3 w-3 bg-secondary"></span>
+          </span>
+          <span class="font-label-md text-label-md text-on-secondary-container uppercase">Status: Live Sync</span>
+        </div>
       </div>
-      
-      <div id="filter-date-2-container" style="display:none; align-items:center; gap:8px;">
-        <span style="font-size:13px; color:var(--text-muted);">s/d</span>
-        <input type="date" id="filter-date-2">
-      </div>
+    </section>
 
-      <select id="filter-bagian" style="display:none;">
-        <option value="">Semua Bagian</option>
-        <option value="utility">Utility</option>
-        <option value="produksi">Produksi</option>
-        <option value="laboratorium">Laboratorium</option>
-        <option value="SCM">SCM</option>
-        <option value="SDM dan Sistem">SDM dan Sistem</option>
-        <option value="CORSEC">CORSEC</option>
-      </select>
-      
-      <button id="btn-apply-filter">Terapkan Filter</button>
-      <button id="btn-export-pdf" type="button" style="background:var(--accent-blue);">Export PDF</button>
+    <!-- Segmented Main Menu -->
+    <div class="flex flex-wrap gap-sm mb-lg bg-surface-container-low p-sm rounded-xl max-w-fit">
+      <button class="btn-main active px-lg py-sm rounded-lg font-body-md text-body-md font-semibold transition-all" data-category="master">Master WO</button>
+      <button class="btn-main px-lg py-sm rounded-lg font-body-md text-body-md font-semibold transition-all" data-category="mechanical">Mechanical</button>
+      <button class="btn-main px-lg py-sm rounded-lg font-body-md text-body-md font-semibold transition-all" data-category="electrical">Electrical</button>
+      <button class="btn-main px-lg py-sm rounded-lg font-body-md text-body-md font-semibold transition-all" data-category="modification">Modification</button>
     </div>
 
-    <div class="panel glass-panel" id="panel">
-      <div class="placeholder">Memuat data...</div>
+    <!-- Sub Menu (status) -->
+    <div class="flex flex-wrap gap-sm mb-lg" id="sub-menu-container" style="display:none;">
+      <button class="btn-sub active px-lg py-sm rounded-full font-body-md text-body-md font-semibold transition-all" data-status="pending">Pending Approval</button>
+      <button class="btn-sub px-lg py-sm rounded-full font-body-md text-body-md font-semibold transition-all" data-status="approved">On Progress</button>
+      <button class="btn-sub px-lg py-sm rounded-full font-body-md text-body-md font-semibold transition-all" data-status="pending_finished">Pending Finished</button>
+      <button class="btn-sub px-lg py-sm rounded-full font-body-md text-body-md font-semibold transition-all" data-status="finished">Finished</button>
+      <button class="btn-sub px-lg py-sm rounded-full font-body-md text-body-md font-semibold transition-all" data-status="rejected">Rejected</button>
+    </div>
+
+    <!-- Filter & Action Bar -->
+    <div class="flex flex-col md:flex-row items-center justify-between gap-md bg-surface-container-lowest p-md rounded-xl custom-shadow border border-outline-variant/30 mb-gutter">
+      <div class="flex flex-wrap items-center gap-md w-full md:w-auto">
+        <select id="filter-type" class="px-md py-sm bg-surface rounded-lg border border-outline-variant focus:ring-primary focus:border-primary font-body-md text-body-md outline-none">
+          <option value="all">Semua Waktu</option>
+          <option value="single">Tanggal Tertentu</option>
+          <option value="range">Rentang Tanggal</option>
+        </select>
+
+        <div id="filter-date-1-container" style="display:none;" class="items-center gap-sm">
+          <span class="font-body-md text-body-md text-outline">Tgl:</span>
+          <input type="date" id="filter-date-1" class="px-md py-sm bg-surface rounded-lg border border-outline-variant focus:ring-primary focus:border-primary font-body-md text-body-md outline-none">
+        </div>
+
+        <div id="filter-date-2-container" style="display:none;" class="items-center gap-sm">
+          <span class="font-body-md text-body-md text-outline">s/d</span>
+          <input type="date" id="filter-date-2" class="px-md py-sm bg-surface rounded-lg border border-outline-variant focus:ring-primary focus:border-primary font-body-md text-body-md outline-none">
+        </div>
+
+        <select id="filter-bagian" style="display:none;" class="px-md py-sm bg-surface rounded-lg border border-outline-variant focus:ring-primary focus:border-primary font-body-md text-body-md outline-none">
+          <option value="">Semua Bagian</option>
+          <option value="utility">Utility</option>
+          <option value="produksi">Produksi</option>
+          <option value="laboratorium">Laboratorium</option>
+          <option value="SCM">SCM</option>
+          <option value="SDM dan Sistem">SDM dan Sistem</option>
+          <option value="CORSEC">CORSEC</option>
+        </select>
+
+        <button id="btn-apply-filter" class="px-lg py-sm bg-primary text-on-primary rounded-lg font-body-md text-body-md font-semibold hover:opacity-90 transition-opacity flex items-center gap-xs">
+          <span class="material-symbols-outlined text-[18px]">filter_list</span>
+          Terapkan Filter
+        </button>
+      </div>
+
+      <button id="btn-export-pdf" type="button" class="w-full md:w-auto px-lg py-sm bg-surface-container-high text-primary rounded-lg font-body-md text-body-md font-semibold hover:bg-primary-container hover:text-on-primary transition-all flex items-center justify-center gap-xs">
+        <span class="material-symbols-outlined text-[18px]">picture_as_pdf</span>
+        Export PDF
+      </button>
+    </div>
+
+    <!-- Dashboard Grid -->
+    <div class="grid grid-cols-12 gap-gutter">
+
+      <!-- Summary Bento Card -->
+      <div class="col-span-12 md:col-span-4 lg:col-span-3">
+        <div class="bg-surface-container-lowest p-lg rounded-xl custom-shadow border border-outline-variant/30 h-full flex flex-col justify-between">
+          <div>
+            <h3 class="font-headline-sm text-headline-sm text-on-background mb-xs">Ringkasan</h3>
+            <p class="font-body-md text-body-md text-outline">Total tiket pada tampilan saat ini</p>
+          </div>
+          <div class="mt-xl">
+            <span id="summary-count" class="text-[64px] font-bold text-primary leading-none">00</span>
+            <div class="flex items-center gap-xs text-secondary mt-sm">
+              <span class="material-symbols-outlined text-[16px]">check_circle</span>
+              <span id="summary-label" class="font-label-md text-label-md">0 TIKET DITEMUKAN</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Main Data Card -->
+      <div class="col-span-12 md:col-span-8 lg:col-span-9">
+        <div class="bg-surface-container-lowest rounded-xl custom-shadow border border-outline-variant/30 overflow-hidden">
+          <div class="bg-surface-container-low px-lg py-md border-b border-outline-variant/30 flex justify-between items-center">
+            <h2 id="panel-title" class="font-headline-sm text-headline-sm text-on-background">Seluruh Data Master WO</h2>
+            <span class="bg-primary-container/20 text-primary px-sm py-xs rounded font-label-md text-label-md">LIVE</span>
+          </div>
+          <div class="p-lg space-y-md" id="panel">
+            <div class="text-center py-lg font-body-md text-body-md text-outline">Memuat data...</div>
+          </div>
+        </div>
+      </div>
+
     </div>
   </main>
 </div>
 
-<!-- Modal Detail -->
+<!-- ============================================================ -->
+<!-- MODAL DETAIL -->
+<!-- ============================================================ -->
 <div class="modal-overlay" id="modal-overlay">
-  <div class="modal-content glass-panel">
-    <div class="modal-header">
-      <h3 id="modal-title">Detail Work Order</h3>
-      <button class="close-btn" id="modal-close">&times;</button>
+  <div class="modal-content bg-surface-container-lowest rounded-xl custom-shadow border border-outline-variant/30">
+    <div class="flex justify-between items-center px-lg py-md border-b border-outline-variant/30 bg-surface-container-low rounded-t-xl">
+      <h3 id="modal-title" class="font-headline-sm text-headline-sm text-on-background">Detail Work Order</h3>
+      <button class="close-btn text-outline hover:text-error transition-colors text-2xl leading-none" id="modal-close">&times;</button>
     </div>
-    <div class="modal-body" id="modal-body">
-      <!-- Di-render via JS -->
-    </div>
+    <div class="modal-body p-lg" id="modal-body"></div>
   </div>
 </div>
 
-<!-- Modal Form Aksi (Input Biaya bertahap + Upload Foto) -->
+<!-- ============================================================ -->
+<!-- MODAL FORM AKSI -->
+<!-- ============================================================ -->
 <div class="modal-overlay" id="form-modal-overlay">
-  <div class="modal-content glass-panel">
-    <div class="modal-header">
-      <h3 id="form-modal-title">Form Aksi</h3>
-      <button class="close-btn" id="form-modal-close">&times;</button>
+  <div class="modal-content bg-surface-container-lowest rounded-xl custom-shadow border border-outline-variant/30">
+    <div class="flex justify-between items-center px-lg py-md border-b border-outline-variant/30 bg-surface-container-low rounded-t-xl">
+      <h3 id="form-modal-title" class="font-headline-sm text-headline-sm text-on-background">Form Aksi</h3>
+      <button class="close-btn text-outline hover:text-error transition-colors text-2xl leading-none" id="form-modal-close">&times;</button>
     </div>
-    <div class="modal-body" id="form-modal-body">
-      <!-- Di-render via JS -->
-    </div>
+    <div class="modal-body p-lg" id="form-modal-body"></div>
   </div>
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+
+<style>
+  /* Segmented main-menu / sub-menu state styling (kept as plain CSS so
+     toggling the .active class from JS is enough, no class-name churn) */
+  .btn-main { color: #434655; }
+  .btn-main:hover:not(.active) { background: #dce9ff; }
+  .btn-main.active {
+    background: #2563eb; color: #ffffff; box-shadow: 0 1px 3px rgba(0,0,0,0.12);
+  }
+  .btn-sub {
+    background: #ffffff; color: #434655; border: 1px solid #c3c6d7;
+  }
+  .btn-sub:hover:not(.active) { background: #eff4ff; }
+  .btn-sub.active {
+    background: #004ac6; color: #ffffff; border-color: #004ac6;
+  }
+</style>
+
 <script>
 // ============================================================================
 // KONFIGURASI URL
@@ -733,14 +322,14 @@ const LOGIN_API_URL = "https://script.google.com/macros/s/AKfycbyLSH0_M2CcJ2hTw-
 // ============================================================================
 // STATE APLIKASI
 // ============================================================================
-let activeCategory = "master"; 
-let activeStatus = "pending"; 
+let activeCategory = "master";
+let activeStatus = "pending";
 
 let currentDataObjects = [];
 let globalHeaders = [];
 
-let targetRequestId = ""; 
-let targetItemCategory = ""; 
+let targetRequestId = "";
+let targetItemCategory = "";
 let targetItemStatus = "";
 let targetCurrentBiaya = "";
 
@@ -751,6 +340,9 @@ const mainBtns = document.querySelectorAll(".btn-main");
 const subBtns = document.querySelectorAll(".btn-sub");
 const subMenuContainer = document.getElementById("sub-menu-container");
 const panel = document.getElementById("panel");
+const panelTitleEl = document.getElementById("panel-title");
+const summaryCountEl = document.getElementById("summary-count");
+const summaryLabelEl = document.getElementById("summary-label");
 const filterBagianSelect = document.getElementById("filter-bagian");
 
 mainBtns.forEach(btn => {
@@ -848,8 +440,8 @@ async function exportToPDF() {
     head: [["No", "Nomor WO / Request ID", "Nama Pemohon", "Kategori", "Status", "Tanggal"]],
     body: lastExportRows,
     styles: { fontSize: 9, cellPadding: 5 },
-    headStyles: { fillColor: [49, 130, 206], textColor: 255 },
-    alternateRowStyles: { fillColor: [245, 247, 250] }
+    headStyles: { fillColor: [0, 74, 198], textColor: 255 },
+    alternateRowStyles: { fillColor: [239, 244, 255] }
   });
 
   const safeCategory = activeCategory === "master" ? "master" : activeCategory;
@@ -862,7 +454,7 @@ document.getElementById("btn-export-pdf").addEventListener("click", exportToPDF)
 
 function parseCSVDateToISO(dateStr) {
   if (!dateStr) return "";
-  let cleanStr = dateStr.split(" ")[0]; 
+  let cleanStr = dateStr.split(" ")[0];
   if (cleanStr.includes("/")) {
     let parts = cleanStr.split("/");
     if (parts.length === 3 && parts[2].length === 4) {
@@ -871,7 +463,7 @@ function parseCSVDateToISO(dateStr) {
   }
   let d = new Date(dateStr);
   if (!isNaN(d.getTime())) return d.toISOString().split("T")[0];
-  return cleanStr; 
+  return cleanStr;
 }
 
 function findColumnsIndex(header) {
@@ -887,16 +479,13 @@ function findColumnsIndex(header) {
 }
 
 // ============================================================================
-// AMBIL DATA -- LANGSUNG dari Spreadsheet lewat doGet (bukan CSV publish)
+// AMBIL DATA -- LANGSUNG dari Spreadsheet lewat doGet
 // ============================================================================
 async function fetchData() {
-  panel.innerHTML = `<div class="state">Memuat data...</div>`;
+  panel.innerHTML = `<div class="text-center py-lg font-body-md text-body-md text-outline">Memuat data...</div>`;
   currentDataObjects = [];
   globalHeaders = [];
 
-  // role & bagian dikirim ke server supaya server yang memfilter data --
-  // isolasi antar user WAJIB terjadi di backend, bukan cuma disembunyikan
-  // di tampilan.
   const userRole = sessionStorage.getItem("userRole") || "";
   const userBagian = sessionStorage.getItem("userBagian") || "";
   const filterBagianVal = userRole === "engineering" ? (filterBagianSelect.value || "") : "";
@@ -949,25 +538,52 @@ async function fetchData() {
 
     if (currentDataObjects.length === 0) {
       let t = activeCategory === "master" ? "Data Master WO" : `Data ${activeCategory}`;
-      panel.innerHTML = `<h2>${t}</h2><div class="state error">Data kosong atau tidak ditemukan.</div>`;
+      panelTitleEl.textContent = t;
+      summaryCountEl.textContent = "00";
+      summaryLabelEl.textContent = "0 TIKET DITEMUKAN";
+      lastExportRows = [];
+      lastExportTitle = t;
+      panel.innerHTML = `<div class="text-center py-lg font-body-md text-body-md text-error">Data kosong atau tidak ditemukan.</div>`;
       return;
     }
-    
+
     renderData();
 
   } catch (err) {
-    panel.innerHTML = `<h2>Data Error</h2><div class="state error">Gagal memuat: ${escapeHtml(err.message)}</div>`;
+    panelTitleEl.textContent = "Data Error";
+    panel.innerHTML = `<div class="text-center py-lg font-body-md text-body-md text-error">Gagal memuat: ${escapeHtml(err.message)}</div>`;
   }
 }
+
+// Badge styling helpers (mengikuti bahasa visual badge di doc rujukan)
+const CATEGORY_BADGE_CLASSES = {
+  mechanical: "bg-orange-50 text-orange-700 border border-orange-200",
+  electrical: "bg-blue-50 text-blue-700 border border-blue-200",
+  modification: "bg-purple-50 text-purple-700 border border-purple-200"
+};
+const STATUS_BADGE_CLASSES = {
+  pending: "bg-amber-50 text-amber-700 border border-amber-200",
+  approved: "bg-primary-container/10 text-primary border border-primary/20",
+  pending_finished: "bg-yellow-50 text-yellow-700 border border-yellow-200",
+  finished: "bg-secondary-container text-on-secondary-container border border-secondary/20",
+  rejected: "bg-error-container text-on-error-container border border-error/20"
+};
+const STATUS_DOT_CLASSES = {
+  pending: "bg-amber-500",
+  approved: "bg-primary",
+  pending_finished: "bg-yellow-500",
+  finished: "bg-secondary",
+  rejected: "bg-error"
+};
 
 function renderData() {
   let title = activeCategory === "master" ? "Seluruh Data Master WO" : `Data ${activeCategory} - ${activeStatus}`;
   const cols = findColumnsIndex(globalHeaders);
-  
+
   const filterVal = filterType.value;
   const d1 = date1Input.value;
   const d2 = date2Input.value;
-  
+
   let filteredItems = [];
   let exportRows = [];
 
@@ -999,60 +615,69 @@ function renderData() {
       const tanggal = cols.dateIdx !== -1 ? (r[cols.dateIdx] || "-").trim() : "-";
       const catLabel = activeCategory === "master" ? itemObj.category : activeCategory;
       const statLabel = activeCategory === "master" ? itemObj.labelStat : (activeStatusLabelMap[itemObj.status] || itemObj.status);
-      
-      let topStr = req && name ? `<strong>${escapeHtml(req)}</strong> &mdash; ${escapeHtml(name)}` : escapeHtml(req || name);
-      
-      let badgeHtml = "";
-      if (activeCategory === "master") {
-        badgeHtml = `
-          <div class="id-badges">
-            <span class="badge cat-${itemObj.category}">${itemObj.category}</span>
-            <span class="badge stat-${itemObj.status}">${itemObj.labelStat}</span>
-          </div>
-        `;
-      }
-      
-      let htmlStr = `
-        <div class="list-text">
-          <div>${topStr}</div>
-          ${badgeHtml}
-        </div>
-      `;
-      
-      filteredItems.push({ 
-        originalIndex: i, 
-        html: htmlStr, 
-        reqId: req,
+
+      filteredItems.push({
+        originalIndex: i,
+        req, name, tanggal,
         itemCat: itemObj.category,
-        itemStat: itemObj.status
+        itemStat: itemObj.status,
+        labelStat: activeCategory === "master" ? itemObj.labelStat : statLabel
       });
 
-      exportRows.push([ filteredItems.length, req || "-", name || "-", catLabel, statLabel, tanggal ]);
+      exportRows.push([filteredItems.length, req || "-", name || "-", catLabel, statLabel, tanggal]);
     }
   }
 
   lastExportRows = exportRows;
   lastExportTitle = title;
 
+  panelTitleEl.textContent = title;
+  summaryCountEl.textContent = String(filteredItems.length).padStart(2, "0");
+  summaryLabelEl.textContent = `${filteredItems.length} TIKET DITEMUKAN`;
+
   if (filteredItems.length === 0) {
-    panel.innerHTML = `<h2>${title}</h2><div class="state">Tidak ada tiket yang sesuai dengan filter.</div>`;
+    panel.innerHTML = `<div class="text-center py-lg font-body-md text-body-md text-outline">Tidak ada tiket yang sesuai dengan filter.</div>`;
     return;
   }
 
-  panel.innerHTML = `
-    <h2>${title}</h2>
-    <div class="count">${filteredItems.length} tiket ditemukan</div>
-    <ul class="data-list">
-      ${filteredItems.map((item, idx) => `
-        <li onclick="showModal(${item.originalIndex}, '${item.reqId}', '${item.itemCat}', '${item.itemStat}')">
-          <span class="num">${idx+1}</span>
-          ${item.html}
-        </li>`).join("")}
-    </ul>
-  `;
+  panel.innerHTML = filteredItems.map((item, idx) => {
+    const catBadge = CATEGORY_BADGE_CLASSES[item.itemCat] || "bg-surface-container-high text-primary border border-primary/10";
+    const statBadge = STATUS_BADGE_CLASSES[item.itemStat] || "bg-surface-container-high text-on-surface-variant border border-outline-variant";
+    const dot = STATUS_DOT_CLASSES[item.itemStat] || "bg-outline";
+    const topStr = item.req && item.name
+      ? `<span class="font-bold">${escapeHtml(item.req)}</span> &mdash; ${escapeHtml(item.name)}`
+      : escapeHtml(item.req || item.name || "-");
+
+    return `
+      <div onclick="showModal(${item.originalIndex}, '${item.req}', '${item.itemCat}', '${item.itemStat}')"
+        class="flex flex-col sm:flex-row items-start sm:items-center justify-between p-md bg-white border border-outline-variant/20 rounded-lg hover:border-primary/30 hover:shadow-sm transition-all cursor-pointer group">
+        <div class="flex items-center gap-md">
+          <div class="w-12 h-12 rounded-full bg-surface-container-high flex items-center justify-center text-primary font-bold text-headline-sm shrink-0">
+            ${idx + 1}
+          </div>
+          <div>
+            <h3 class="font-body-lg text-body-lg text-on-surface group-hover:text-primary transition-colors">${topStr}</h3>
+            <div class="flex flex-wrap gap-sm mt-xs">
+              <span class="px-sm py-xs rounded font-label-md text-label-md uppercase tracking-wider ${catBadge}">
+                ${escapeHtml(item.itemCat)}
+              </span>
+              <span class="px-sm py-xs rounded font-label-md text-label-md uppercase tracking-wider flex items-center gap-xs ${statBadge}">
+                <span class="w-1.5 h-1.5 rounded-full ${dot}"></span>
+                ${escapeHtml(item.labelStat)}
+              </span>
+            </div>
+          </div>
+        </div>
+        <div class="mt-md sm:mt-0 flex items-center gap-xs text-outline group-hover:text-primary transition-colors">
+          <span class="font-label-md text-label-md hidden sm:inline">Lihat Detail</span>
+          <span class="material-symbols-outlined text-[20px]">chevron_right</span>
+        </div>
+      </div>
+    `;
+  }).join("");
 }
 
-function escapeHtml(str){
+function escapeHtml(str) {
   const div = document.createElement("div");
   div.textContent = str;
   return div.innerHTML;
@@ -1068,8 +693,8 @@ const btnCloseModal = document.getElementById("modal-close");
 function showModal(originalIndex, reqId, itemCat, itemStat) {
   const itemObj = currentDataObjects[originalIndex];
   const rowData = itemObj.rowData;
-  
-  targetRequestId = reqId; 
+
+  targetRequestId = reqId;
   targetItemCategory = itemCat;
   targetItemStatus = itemStat;
 
@@ -1077,52 +702,56 @@ function showModal(originalIndex, reqId, itemCat, itemStat) {
   targetCurrentBiaya = biayaColIdx !== -1 ? (rowData[biayaColIdx] || "") : "";
 
   let html = "";
-  
+
   for (let i = 0; i < globalHeaders.length; i++) {
     const headerName = globalHeaders[i] ? globalHeaders[i].trim() : `Kolom ${i+1}`;
     const value = rowData[i] ? rowData[i].trim() : "-";
     if (headerName !== "") {
-      html += `<div class="detail-row"><div class="detail-label">${escapeHtml(headerName)}</div><div class="detail-value">${escapeHtml(value)}</div></div>`;
+      html += `
+        <div class="mb-md pb-md border-b border-outline-variant/20 last:border-b-0 last:mb-0 last:pb-0">
+          <div class="font-label-md text-label-md text-outline uppercase tracking-wider mb-xs">${escapeHtml(headerName)}</div>
+          <div class="font-body-md text-body-md text-on-surface whitespace-pre-wrap">${escapeHtml(value)}</div>
+        </div>`;
     }
   }
 
   const userRole = sessionStorage.getItem("userRole");
-  
+
   if (userRole === "engineering" && targetItemStatus === "pending") {
     html += `
-      <div class="action-footer" id="action-footer">
-        <button class="btn-action btn-approve" onclick="executeAction('approved')">Terima (Approve)</button>
-        <button class="btn-action btn-reject" onclick="executeAction('rejected')">Tolak (Reject)</button>
+      <div class="mt-lg pt-md border-t border-dashed border-outline-variant flex flex-wrap gap-sm" id="action-footer">
+        <button class="flex-1 min-w-[140px] px-md py-sm rounded-lg font-body-md text-body-md font-semibold text-on-primary bg-secondary hover:opacity-90 transition-opacity" onclick="executeAction('approved')">Terima (Approve)</button>
+        <button class="flex-1 min-w-[140px] px-md py-sm rounded-lg font-body-md text-body-md font-semibold text-on-error bg-error hover:opacity-90 transition-opacity" onclick="executeAction('rejected')">Tolak (Reject)</button>
       </div>
-      <div id="action-msg" style="text-align:center; margin-top:10px; font-size:12px; color:var(--text-muted);"></div>
+      <div id="action-msg" class="text-center mt-sm font-label-md text-label-md text-outline"></div>
     `;
-  } 
+  }
   else if (userRole === "engineering" && targetItemStatus === "approved") {
     html += `
-      <div class="action-footer" id="action-footer">
-        <button class="btn-action btn-approve" style="background:var(--accent-blue);" onclick="openPendingFinishedForm()">Selesaikan WO (Kirim ke Pending Finished)</button>
+      <div class="mt-lg pt-md border-t border-dashed border-outline-variant flex flex-wrap gap-sm" id="action-footer">
+        <button class="flex-1 min-w-[140px] px-md py-sm rounded-lg font-body-md text-body-md font-semibold text-on-primary bg-primary hover:opacity-90 transition-opacity" onclick="openPendingFinishedForm()">Selesaikan WO (Kirim ke Pending Finished)</button>
       </div>
-      <div id="action-msg" style="text-align:center; margin-top:10px; font-size:12px; color:var(--text-muted);"></div>
+      <div id="action-msg" class="text-center mt-sm font-label-md text-label-md text-outline"></div>
     `;
   }
   else if (userRole === "user" && targetItemStatus === "pending_finished") {
     html += `
-      <div class="action-footer" id="action-footer">
-        <button class="btn-action btn-approve" style="background:var(--accent-green);" onclick="executeAction('finished')">Konfirmasi WO Selesai</button>
-        <button class="btn-action btn-reject" onclick="openReopenForm()">Belum Sesuai (Kembalikan)</button>
+      <div class="mt-lg pt-md border-t border-dashed border-outline-variant flex flex-wrap gap-sm" id="action-footer">
+        <button class="flex-1 min-w-[140px] px-md py-sm rounded-lg font-body-md text-body-md font-semibold text-on-primary bg-secondary hover:opacity-90 transition-opacity" onclick="executeAction('finished')">Konfirmasi WO Selesai</button>
+        <button class="flex-1 min-w-[140px] px-md py-sm rounded-lg font-body-md text-body-md font-semibold text-on-error bg-error hover:opacity-90 transition-opacity" onclick="openReopenForm()">Belum Sesuai (Kembalikan)</button>
       </div>
-      <div id="action-msg" style="text-align:center; margin-top:10px; font-size:12px; color:var(--text-muted);"></div>
+      <div id="action-msg" class="text-center mt-sm font-label-md text-label-md text-outline"></div>
     `;
   }
   else if (userRole === "engineering" && targetItemStatus === "finished") {
     html += `
-      <div class="action-footer" id="action-footer">
-        <button class="btn-action btn-approve" style="background:var(--accent-blue);" onclick="openEditBiayaForm()">Edit Rincian Biaya</button>
+      <div class="mt-lg pt-md border-t border-dashed border-outline-variant flex flex-wrap gap-sm" id="action-footer">
+        <button class="flex-1 min-w-[140px] px-md py-sm rounded-lg font-body-md text-body-md font-semibold text-on-primary bg-primary hover:opacity-90 transition-opacity" onclick="openEditBiayaForm()">Edit Rincian Biaya</button>
       </div>
-      <div id="action-msg" style="text-align:center; margin-top:10px; font-size:12px; color:var(--text-muted);"></div>
+      <div id="action-msg" class="text-center mt-sm font-label-md text-label-md text-outline"></div>
     `;
   }
-  
+
   modalBody.innerHTML = html;
   modalOverlay.style.display = "flex";
 }
@@ -1132,7 +761,7 @@ async function executeAction(actionType, extra) {
   let rejectReason = "";
   let biayaWo = "";
   let photos = extra.photos || [];
-  
+
   if (actionType === "rejected") {
     rejectReason = prompt("Mohon masukkan alasan menolak (Reject) tiket ini:");
     if (rejectReason === null || rejectReason.trim() === "") {
@@ -1156,54 +785,54 @@ async function executeAction(actionType, extra) {
   const msgBox = document.getElementById(usingFormModal ? "form-action-msg" : "action-msg");
   const buttons = btnFooter ? btnFooter.querySelectorAll("button") : [];
   buttons.forEach(b => b.disabled = true);
-  
+
   if (msgBox) {
-    msgBox.innerHTML = photos.length > 0
+    msgBox.textContent = photos.length > 0
       ? `Mengunggah ${photos.length} foto & memproses data ke server, mohon tunggu...`
       : "Memproses data ke server, mohon tunggu...";
-    msgBox.style.color = "var(--text-muted)";
+    msgBox.className = "text-center mt-sm font-label-md text-label-md text-outline";
   }
 
   try {
     const res = await fetch(LOGIN_API_URL, {
       method: "POST",
       headers: { "Content-Type": "text/plain;charset=utf-8" },
-      body: JSON.stringify({ 
-        type: "action", 
-        action: actionType, 
+      body: JSON.stringify({
+        type: "action",
+        action: actionType,
         category: targetItemCategory,
         requestId: targetRequestId,
-        rejectReason: rejectReason, 
+        rejectReason: rejectReason,
         biayaWo: biayaWo,
         photos: photos,
         role: sessionStorage.getItem("userRole") || "",
         bagian: sessionStorage.getItem("userBagian") || ""
       })
     });
-    
+
     const result = await res.json();
 
     if (result.success) {
       if (msgBox) {
-        msgBox.innerHTML = "Berhasil! Data telah diperbarui.";
-        msgBox.style.color = "var(--accent-green)";
+        msgBox.textContent = "Berhasil! Data telah diperbarui.";
+        msgBox.className = "text-center mt-sm font-label-md text-label-md text-secondary";
       }
       setTimeout(() => {
         modalOverlay.style.display = "none";
         formModalOverlay.style.display = "none";
-        fetchData(); 
+        fetchData();
       }, 1500);
     } else {
       if (msgBox) {
-        msgBox.innerHTML = "Gagal: " + result.message;
-        msgBox.style.color = "var(--rejected)";
+        msgBox.textContent = "Gagal: " + result.message;
+        msgBox.className = "text-center mt-sm font-label-md text-label-md text-error";
       }
-      buttons.forEach(b => b.disabled = false); 
+      buttons.forEach(b => b.disabled = false);
     }
   } catch (err) {
     if (msgBox) {
-      msgBox.innerHTML = "Gagal menghubungi server.";
-      msgBox.style.color = "var(--rejected)";
+      msgBox.textContent = "Gagal menghubungi server.";
+      msgBox.className = "text-center mt-sm font-label-md text-label-md text-error";
     }
     buttons.forEach(b => b.disabled = false);
   }
@@ -1284,9 +913,9 @@ function renderPhotoPreviews(containerId) {
   const container = document.getElementById(containerId);
   if (!container) return;
   container.innerHTML = selectedPhotos.map((p, idx) => `
-    <div class="photo-thumb">
-      <img src="${p.previewUrl}" alt="preview">
-      <button type="button" class="btn-remove-photo" onclick="removeSelectedPhoto(${idx}, '${containerId}')">&times;</button>
+    <div class="relative rounded-lg overflow-hidden border border-outline-variant/40 aspect-square">
+      <img src="${p.previewUrl}" alt="preview" class="w-full h-full object-cover">
+      <button type="button" class="absolute top-1 right-1 w-6 h-6 rounded-full bg-on-background/70 text-white text-sm leading-none" onclick="removeSelectedPhoto(${idx}, '${containerId}')">&times;</button>
     </div>
   `).join("");
 }
@@ -1307,27 +936,25 @@ function openPendingFinishedForm() {
 function renderPendingFinishedForm() {
   const total = biayaRows.reduce((sum, r) => sum + (Number(r.harga) || 0), 0);
   formModalBody.innerHTML = `
-    <div class="form-section-label">Rincian Biaya Perbaikan</div>
-    <div id="biaya-rows-container"></div>
-    <button type="button" class="btn-add-row" id="btn-add-biaya-row">+ Tambah Baris</button>
-    <div class="biaya-total-row">
+    <div class="font-label-md text-label-md text-outline uppercase tracking-wider mb-sm">Rincian Biaya Perbaikan</div>
+    <div id="biaya-rows-container" class="flex flex-col gap-sm"></div>
+    <button type="button" class="mt-xs w-full px-md py-sm rounded-lg border border-dashed border-outline-variant text-outline hover:text-primary hover:border-primary font-body-md text-body-md font-semibold transition-all" id="btn-add-biaya-row">+ Tambah Baris</button>
+    <div class="flex justify-between items-center mt-md pt-md border-t border-dashed border-outline-variant font-body-md text-body-md font-semibold">
       <span>Total Biaya WO</span>
-      <span class="amount" id="biaya-total-display">${formatRupiah(total)}</span>
+      <span class="text-secondary text-headline-sm font-headline-sm" id="biaya-total-display">${formatRupiah(total)}</span>
     </div>
 
-    <div class="form-divider"></div>
+    <div class="my-lg border-t border-dashed border-outline-variant"></div>
 
-    <div class="form-section-label">Bukti Foto Perbaikan</div>
-    <div class="photo-input-wrap">
-      <input type="file" id="pf-photo-input" accept="image/*" multiple>
-    </div>
-    <div class="photo-preview-grid" id="pf-photo-preview"></div>
+    <div class="font-label-md text-label-md text-outline uppercase tracking-wider mb-sm">Bukti Foto Perbaikan</div>
+    <input type="file" id="pf-photo-input" accept="image/*" multiple class="w-full px-md py-sm border border-dashed border-outline-variant rounded-lg font-body-md text-body-md text-on-surface-variant">
+    <div class="grid grid-cols-4 sm:grid-cols-5 gap-sm mt-md" id="pf-photo-preview"></div>
 
-    <div class="form-footer" id="form-action-footer">
-      <button class="btn-action btn-reject" type="button" onclick="closeFormModal()">Batal</button>
-      <button class="btn-action btn-approve" type="button" style="background:var(--accent-blue);" id="btn-submit-pending-finished">Kirim ke Pending Finished</button>
+    <div class="mt-lg pt-md border-t border-dashed border-outline-variant flex gap-sm" id="form-action-footer">
+      <button class="flex-1 px-md py-sm rounded-lg border border-outline-variant text-on-surface-variant font-body-md text-body-md font-semibold hover:bg-surface-container transition-all" type="button" onclick="closeFormModal()">Batal</button>
+      <button class="flex-1 px-md py-sm rounded-lg bg-primary text-on-primary font-body-md text-body-md font-semibold hover:opacity-90 transition-opacity" type="button" id="btn-submit-pending-finished">Kirim ke Pending Finished</button>
     </div>
-    <div id="form-action-msg" class="upload-progress"></div>
+    <div id="form-action-msg" class="text-center mt-sm font-label-md text-label-md text-outline"></div>
   `;
 
   renderBiayaRows();
@@ -1344,10 +971,12 @@ function renderPendingFinishedForm() {
 function renderBiayaRows() {
   const container = document.getElementById("biaya-rows-container");
   container.innerHTML = biayaRows.map((row, idx) => `
-    <div class="biaya-row">
-      <input type="text" placeholder="Deskripsi pengeluaran (mis. Ganti bearing)" value="${escapeHtml(row.desc)}" data-idx="${idx}" data-field="desc">
-      <input type="number" min="0" placeholder="Harga (Rp)" value="${row.harga}" data-idx="${idx}" data-field="harga">
-      <button type="button" class="btn-remove-row" ${biayaRows.length <= 1 ? "disabled" : ""} data-idx="${idx}">&times;</button>
+    <div class="grid grid-cols-[1fr_140px_36px] gap-sm items-center">
+      <input type="text" placeholder="Deskripsi pengeluaran (mis. Ganti bearing)" value="${escapeHtml(row.desc)}" data-idx="${idx}" data-field="desc"
+        class="px-md py-sm bg-surface rounded-lg border border-outline-variant focus:ring-primary focus:border-primary font-body-md text-body-md outline-none">
+      <input type="number" min="0" placeholder="Harga (Rp)" value="${row.harga}" data-idx="${idx}" data-field="harga"
+        class="px-md py-sm bg-surface rounded-lg border border-outline-variant focus:ring-primary focus:border-primary font-body-md text-body-md outline-none">
+      <button type="button" class="w-9 h-9 rounded-lg border border-error text-error bg-error-container/40 hover:bg-error-container transition-all" ${biayaRows.length <= 1 ? "disabled" : ""} data-idx="${idx}">&times;</button>
     </div>
   `).join("");
 
@@ -1362,7 +991,7 @@ function renderBiayaRows() {
     });
   });
 
-  container.querySelectorAll(".btn-remove-row").forEach(btn => {
+  container.querySelectorAll("button[data-idx]").forEach(btn => {
     btn.addEventListener("click", (e) => {
       const idx = Number(e.target.getAttribute("data-idx"));
       biayaRows.splice(idx, 1);
@@ -1400,19 +1029,18 @@ function openEditBiayaForm() {
 
 function renderEditBiayaForm() {
   formModalBody.innerHTML = `
-    <div class="form-section-label">Rincian Biaya</div>
-    <p style="font-size:12px; color:var(--text-muted); margin:-4px 0 12px;">
+    <div class="font-label-md text-label-md text-outline uppercase tracking-wider mb-xs">Rincian Biaya</div>
+    <p class="font-body-md text-body-md text-on-surface-variant mb-md">
       Silakan ubah, hapus, atau tambahkan baris apa pun secara bebas sesuai kebutuhan pembukuan.
-      Sistem tidak akan menghitung ulang total secara otomatis — pastikan Anda menuliskan/memperbarui
-      totalnya sendiri jika diperlukan.
+      Sistem tidak akan menghitung ulang total secara otomatis — pastikan Anda memperbarui totalnya sendiri jika diperlukan.
     </p>
-    <textarea class="form-textarea" id="edit-biaya-textarea" style="min-height:240px;">${escapeHtml(targetCurrentBiaya)}</textarea>
+    <textarea id="edit-biaya-textarea" class="w-full min-h-[240px] px-md py-sm bg-surface rounded-lg border border-outline-variant focus:ring-primary focus:border-primary font-body-md text-body-md outline-none">${escapeHtml(targetCurrentBiaya)}</textarea>
 
-    <div class="form-footer" id="form-action-footer">
-      <button class="btn-action btn-reject" type="button" onclick="closeFormModal()">Batal</button>
-      <button class="btn-action btn-approve" type="button" style="background:var(--accent-blue);" id="btn-submit-edit-biaya">Simpan Perubahan</button>
+    <div class="mt-lg pt-md border-t border-dashed border-outline-variant flex gap-sm" id="form-action-footer">
+      <button class="flex-1 px-md py-sm rounded-lg border border-outline-variant text-on-surface-variant font-body-md text-body-md font-semibold hover:bg-surface-container transition-all" type="button" onclick="closeFormModal()">Batal</button>
+      <button class="flex-1 px-md py-sm rounded-lg bg-primary text-on-primary font-body-md text-body-md font-semibold hover:opacity-90 transition-opacity" type="button" id="btn-submit-edit-biaya">Simpan Perubahan</button>
     </div>
-    <div id="form-action-msg" class="upload-progress"></div>
+    <div id="form-action-msg" class="text-center mt-sm font-label-md text-label-md text-outline"></div>
   `;
 
   document.getElementById("btn-submit-edit-biaya").addEventListener("click", submitEditBiayaForm);
@@ -1434,22 +1062,21 @@ function openReopenForm() {
 
 function renderReopenForm() {
   formModalBody.innerHTML = `
-    <div class="form-section-label">Catatan Kenapa Belum Sesuai</div>
-    <textarea class="form-textarea" id="reopen-note" placeholder="Contoh: Kebocoran masih ada di sambungan pipa, mohon diperiksa ulang..."></textarea>
+    <div class="font-label-md text-label-md text-outline uppercase tracking-wider mb-xs">Catatan Kenapa Belum Sesuai</div>
+    <textarea id="reopen-note" placeholder="Contoh: Kebocoran masih ada di sambungan pipa, mohon diperiksa ulang..."
+      class="w-full min-h-[100px] px-md py-sm bg-surface rounded-lg border border-outline-variant focus:ring-primary focus:border-primary font-body-md text-body-md outline-none"></textarea>
 
-    <div class="form-divider"></div>
+    <div class="my-lg border-t border-dashed border-outline-variant"></div>
 
-    <div class="form-section-label">Bukti Foto Kendala</div>
-    <div class="photo-input-wrap">
-      <input type="file" id="reopen-photo-input" accept="image/*" multiple>
+    <div class="font-label-md text-label-md text-outline uppercase tracking-wider mb-sm">Bukti Foto Kendala</div>
+    <input type="file" id="reopen-photo-input" accept="image/*" multiple class="w-full px-md py-sm border border-dashed border-outline-variant rounded-lg font-body-md text-body-md text-on-surface-variant">
+    <div class="grid grid-cols-4 sm:grid-cols-5 gap-sm mt-md" id="reopen-photo-preview"></div>
+
+    <div class="mt-lg pt-md border-t border-dashed border-outline-variant flex gap-sm" id="form-action-footer">
+      <button class="flex-1 px-md py-sm rounded-lg border border-outline-variant text-on-surface-variant font-body-md text-body-md font-semibold hover:bg-surface-container transition-all" type="button" onclick="closeFormModal()">Batal</button>
+      <button class="flex-1 px-md py-sm rounded-lg bg-error text-on-error font-body-md text-body-md font-semibold hover:opacity-90 transition-opacity" type="button" id="btn-submit-reopen">Kirim & Kembalikan ke On Progress</button>
     </div>
-    <div class="photo-preview-grid" id="reopen-photo-preview"></div>
-
-    <div class="form-footer" id="form-action-footer">
-      <button class="btn-action btn-reject" type="button" onclick="closeFormModal()">Batal</button>
-      <button class="btn-action btn-approve" type="button" id="btn-submit-reopen">Kirim & Kembalikan ke On Progress</button>
-    </div>
-    <div id="form-action-msg" class="upload-progress"></div>
+    <div id="form-action-msg" class="text-center mt-sm font-label-md text-label-md text-outline"></div>
   `;
 
   document.getElementById("reopen-photo-input").addEventListener("change", (e) => {
@@ -1470,10 +1097,10 @@ function submitReopenForm() {
 }
 
 btnCloseModal.addEventListener("click", () => { modalOverlay.style.display = "none"; });
-modalOverlay.addEventListener("click", (e) => { if(e.target === modalOverlay) modalOverlay.style.display = "none"; });
+modalOverlay.addEventListener("click", (e) => { if (e.target === modalOverlay) modalOverlay.style.display = "none"; });
 
 // ============================================================================
-// LOGIKA LOGIN & AUTHENTIKASI
+// LOGIKA LOGIN & AUTENTIKASI
 // ============================================================================
 const loginScreen = document.getElementById("login-screen");
 const appContent = document.getElementById("app-content");
@@ -1481,10 +1108,9 @@ const loginForm = document.getElementById("login-form");
 const loginMsg = document.getElementById("login-msg");
 const loginSubmit = document.getElementById("login-submit");
 const roleBadge = document.getElementById("user-role-badge");
+const roleBadgeText = document.getElementById("user-role-badge-text");
 
 function applyRoleUI(role) {
-  // Filter Bagian hanya relevan & hanya boleh dipakai oleh Engineering,
-  // karena role user lain sudah otomatis terkunci ke bagiannya sendiri.
   filterBagianSelect.style.display = (role === "engineering") ? "inline-block" : "none";
 }
 
@@ -1493,9 +1119,9 @@ if (sessionStorage.getItem("loggedIn") === "true") {
   appContent.style.display = "block";
   const savedRole = sessionStorage.getItem("userRole") || "USER";
   const savedBagian = sessionStorage.getItem("userBagian") || "";
-  roleBadge.textContent = "Akses: " + savedRole.toUpperCase() + (savedBagian ? " — " + savedBagian.toUpperCase() : "");
+  roleBadgeText.textContent = "Akses: " + savedRole.toUpperCase() + (savedBagian ? " — " + savedBagian.toUpperCase() : "");
   applyRoleUI(savedRole);
-  fetchData(); 
+  fetchData();
 }
 
 loginForm.addEventListener("submit", async (e) => {
@@ -1521,9 +1147,9 @@ loginForm.addEventListener("submit", async (e) => {
       sessionStorage.setItem("userBagian", result.bagian || "");
       loginScreen.style.display = "none";
       appContent.style.display = "block";
-      roleBadge.textContent = "Akses: " + (result.role || "user").toUpperCase() + (result.bagian ? " — " + result.bagian.toUpperCase() : "");
+      roleBadgeText.textContent = "Akses: " + (result.role || "user").toUpperCase() + (result.bagian ? " — " + result.bagian.toUpperCase() : "");
       applyRoleUI(result.role || "user");
-      fetchData(); 
+      fetchData();
     } else {
       loginMsg.textContent = result.message || "ID atau password salah.";
     }
