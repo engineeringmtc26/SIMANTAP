@@ -738,6 +738,7 @@ let globalHeaders = [];
 let targetRequestId = ""; 
 let targetItemCategory = ""; 
 let targetItemStatus = "";
+let targetCurrentBiaya = ""; // Menyimpan teks biaya tiket yang sedang dibuka, dipakai untuk fitur edit bebas biaya (Finished)
 
 // Menyimpan hasil filter yang sedang tampil, dipakai untuk Export PDF
 let lastExportRows = [];
@@ -1049,7 +1050,12 @@ function showModal(originalIndex, reqId, itemCat, itemStat) {
   targetRequestId = reqId; 
   targetItemCategory = itemCat;
   targetItemStatus = itemStat;
-  
+
+  // Cari kolom biaya pada data tiket ini, dipakai untuk fitur edit bebas
+  // biaya khusus tiket Finished (role Engineering).
+  const biayaColIdx = globalHeaders.findIndex(h => h && h.toLowerCase().includes("biaya"));
+  targetCurrentBiaya = biayaColIdx !== -1 ? (rowData[biayaColIdx] || "") : "";
+
   let html = "";
   
   for (let i = 0; i < globalHeaders.length; i++) {
@@ -1092,6 +1098,17 @@ function showModal(originalIndex, reqId, itemCat, itemStat) {
       <div id="action-msg" style="text-align:center; margin-top:10px; font-size:12px; color:var(--text-muted);"></div>
     `;
   }
+  else if (userRole === "engineering" && targetItemStatus === "finished") {
+    // Fitur pembukuan: Engineering bisa memodifikasi rincian biaya tiket yang
+    // sudah Finished secara bebas (edit/tambah/hapus baris lama), tanpa
+    // sistem menghitung ulang total secara otomatis.
+    html += `
+      <div class="action-footer" id="action-footer">
+        <button class="btn-action btn-approve" style="background:var(--accent-blue);" onclick="openEditBiayaForm()">Edit Rincian Biaya</button>
+      </div>
+      <div id="action-msg" style="text-align:center; margin-top:10px; font-size:12px; color:var(--text-muted);"></div>
+    `;
+  }
   
   modalBody.innerHTML = html;
   modalOverlay.style.display = "flex";
@@ -1110,12 +1127,12 @@ async function executeAction(actionType, extra) {
       return;
     }
   } else if (actionType === "pending_finished") {
-    // Sudah divalidasi & dirakit oleh openPendingFinishedForm() -> submitPendingFinishedForm()
+    // Dirakit oleh openPendingFinishedForm() -> submitPendingFinishedForm().
+    // Rincian biaya BERSIFAT OPSIONAL di tahap ini -- operator/engineering di
+    // lapangan mungkin belum tahu detail harga barang saat WO baru selesai
+    // dikerjakan. Biaya bisa dilengkapi/diperbaiki nanti setelah tiket
+    // berstatus Finished lewat fitur "Edit Rincian Biaya".
     biayaWo = extra.biayaWo || "";
-    if (!biayaWo) {
-      alert("Aksi dibatalkan: Rincian biaya wajib diisi!");
-      return;
-    }
   } else if (actionType === "finished") {
     if (!confirm(`Anda yakin mengkonfirmasi bahwa tiket ini benar-benar selesai?`)) return;
   } else if (actionType === "approved") {
@@ -1123,11 +1140,15 @@ async function executeAction(actionType, extra) {
   } else if (actionType === "reopen") {
     // Sudah dirakit oleh openReopenForm() -> submitReopenForm()
     rejectReason = extra.rejectReason || "";
+  } else if (actionType === "update_biaya_finished") {
+    // Sudah dikonfirmasi & dirakit oleh openEditBiayaForm() -> submitEditBiayaForm()
+    biayaWo = extra.biayaWo || "";
   }
 
-  // Tentukan konteks tombol/pesan: form aksi (biaya/reopen) pakai elemen sendiri,
-  // aksi lain (approve/reject/finish) pakai footer di modal detail seperti biasa.
-  const usingFormModal = (actionType === "pending_finished" || actionType === "reopen");
+  // Tentukan konteks tombol/pesan: form aksi (biaya/reopen/edit biaya) pakai
+  // elemen sendiri, aksi lain (approve/reject/finish) pakai footer di modal
+  // detail seperti biasa.
+  const usingFormModal = (actionType === "pending_finished" || actionType === "reopen" || actionType === "update_biaya_finished");
   const btnFooter = document.getElementById(usingFormModal ? "form-action-footer" : "action-footer");
   const msgBox = document.getElementById(usingFormModal ? "form-action-msg" : "action-msg");
   const buttons = btnFooter ? btnFooter.querySelectorAll("button") : [];
@@ -1151,7 +1172,8 @@ async function executeAction(actionType, extra) {
         requestId: targetRequestId,
         rejectReason: rejectReason, 
         biayaWo: biayaWo,
-        photos: photos // [{ data, mimeType, name }]
+        photos: photos, // [{ data, mimeType, name }]
+        role: sessionStorage.getItem("userRole") || "" // dipakai backend untuk verifikasi aksi khusus role tertentu
       })
     });
     
@@ -1350,19 +1372,59 @@ function renderBiayaRows() {
 }
 
 function submitPendingFinishedForm() {
+  // Rincian biaya bersifat OPSIONAL: operator boleh mengirim WO ke Pending
+  // Finished walau belum tahu detail harga barang. Biaya bisa dilengkapi
+  // belakangan oleh Engineering setelah tiket berstatus Finished.
   const validRows = biayaRows.filter(r => r.desc.trim() !== "" && Number(r.harga) > 0);
-  if (validRows.length === 0) {
-    alert("Isi minimal 1 baris rincian biaya (deskripsi + harga) sebelum mengirim.");
-    return;
-  }
-  const total = validRows.reduce((sum, r) => sum + Number(r.harga), 0);
-  const lines = validRows.map(r => `- ${r.desc.trim()}: ${formatRupiah(r.harga)}`);
-  lines.push(`TOTAL: ${formatRupiah(total)}`);
-  const biayaText = lines.join("\n");
 
-  if (!confirm(`Kirim WO ini ke Pending Finished dengan total biaya ${formatRupiah(total)}?`)) return;
+  let biayaText = "";
+  let confirmMsg = "Kirim WO ini ke Pending Finished tanpa rincian biaya (biaya bisa dilengkapi nanti)?";
+
+  if (validRows.length > 0) {
+    const total = validRows.reduce((sum, r) => sum + Number(r.harga), 0);
+    const lines = validRows.map(r => `- ${r.desc.trim()}: ${formatRupiah(r.harga)}`);
+    lines.push(`TOTAL: ${formatRupiah(total)}`);
+    biayaText = lines.join("\n");
+    confirmMsg = `Kirim WO ini ke Pending Finished dengan total biaya ${formatRupiah(total)}?`;
+  }
+
+  if (!confirm(confirmMsg)) return;
 
   executeAction("pending_finished", { biayaWo: biayaText, photos: selectedPhotos });
+}
+
+// --- Form: Edit Rincian Biaya bebas (khusus tiket Finished, role Engineering) ---
+function openEditBiayaForm() {
+  formModalTitle.textContent = "Edit Rincian Biaya (Finished)";
+  renderEditBiayaForm();
+  formModalOverlay.style.display = "flex";
+}
+
+function renderEditBiayaForm() {
+  formModalBody.innerHTML = `
+    <div class="form-section-label">Rincian Biaya</div>
+    <p style="font-size:12px; color:var(--text-muted); margin:-4px 0 12px;">
+      Silakan ubah, hapus, atau tambahkan baris apa pun secara bebas sesuai kebutuhan pembukuan.
+      Sistem tidak akan menghitung ulang total secara otomatis — pastikan Anda menuliskan/memperbarui
+      totalnya sendiri jika diperlukan.
+    </p>
+    <textarea class="form-textarea" id="edit-biaya-textarea" style="min-height:240px;">${escapeHtml(targetCurrentBiaya)}</textarea>
+
+    <div class="form-footer" id="form-action-footer">
+      <button class="btn-action btn-reject" type="button" onclick="closeFormModal()">Batal</button>
+      <button class="btn-action btn-approve" type="button" style="background:var(--accent-blue);" id="btn-submit-edit-biaya">Simpan Perubahan</button>
+    </div>
+    <div id="form-action-msg" class="upload-progress"></div>
+  `;
+
+  document.getElementById("btn-submit-edit-biaya").addEventListener("click", submitEditBiayaForm);
+}
+
+function submitEditBiayaForm() {
+  const newText = document.getElementById("edit-biaya-textarea").value;
+  if (!confirm("Simpan perubahan rincian biaya untuk tiket ini? Data biaya sebelumnya akan digantikan sepenuhnya oleh teks ini.")) return;
+
+  executeAction("update_biaya_finished", { biayaWo: newText });
 }
 
 // --- Form: Belum Sesuai / Kembalikan (pending_finished -> approved) ---
