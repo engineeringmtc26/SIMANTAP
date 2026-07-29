@@ -331,6 +331,7 @@ let activeStatus = "pending";
 let currentDataObjects = [];
 let globalHeaders = [];
 
+let targetRowData = []; // VARIABEL TAMBAHAN UNTUK KEPERLUAN EMAIL
 let targetRequestId = "";
 let targetItemCategory = "";
 let targetItemStatus = "";
@@ -393,7 +394,7 @@ filterType.addEventListener("change", () => {
   }
 });
 
-// Filter bagian (khusus Engineering) memfilter LANGSUNG di server, jadi
+// Filter bagian (khusus maintenance) memfilter LANGSUNG di server, jadi
 // begitu berganti pilihan kita panggil ulang fetchData(), bukan cuma
 // render ulang data yang sudah ada di memori.
 filterBagianSelect.addEventListener("change", () => { fetchData(); });
@@ -491,7 +492,7 @@ async function fetchData() {
 
   const userRole = sessionStorage.getItem("userRole") || "";
   const userBagian = sessionStorage.getItem("userBagian") || "";
-  const filterBagianVal = userRole === "engineering" ? (filterBagianSelect.value || "") : "";
+  const filterBagianVal = userRole === "maintenance" ? (filterBagianSelect.value || "") : "";
 
   try {
     if (activeCategory === "master") {
@@ -697,6 +698,7 @@ function showModal(originalIndex, reqId, itemCat, itemStat) {
   const itemObj = currentDataObjects[originalIndex];
   const rowData = itemObj.rowData;
 
+  targetRowData = rowData;
   targetRequestId = reqId;
   targetItemCategory = itemCat;
   targetItemStatus = itemStat;
@@ -720,7 +722,8 @@ function showModal(originalIndex, reqId, itemCat, itemStat) {
 
   const userRole = sessionStorage.getItem("userRole");
 
-  if (userRole === "engineering" && targetItemStatus === "pending") {
+  // Logic Tombol Action Role Based
+  if (userRole === "maintenance" && targetItemStatus === "pending") {
     html += `
       <div class="mt-lg pt-md border-t border-dashed border-outline-variant flex flex-wrap gap-sm" id="action-footer">
         <button class="flex-1 min-w-[140px] px-md py-sm rounded-lg font-body-md text-body-md font-semibold text-on-primary bg-secondary hover:opacity-90 transition-opacity" onclick="executeAction('approved')">Terima (Approve)</button>
@@ -729,7 +732,7 @@ function showModal(originalIndex, reqId, itemCat, itemStat) {
       <div id="action-msg" class="text-center mt-sm font-label-md text-label-md text-outline"></div>
     `;
   }
-  else if (userRole === "engineering" && targetItemStatus === "approved") {
+  else if (userRole === "maintenance" && targetItemStatus === "approved") {
     html += `
       <div class="mt-lg pt-md border-t border-dashed border-outline-variant flex flex-wrap gap-sm" id="action-footer">
         <button class="flex-1 min-w-[140px] px-md py-sm rounded-lg font-body-md text-body-md font-semibold text-on-primary bg-primary hover:opacity-90 transition-opacity" onclick="openPendingFinishedForm()">Selesaikan WO (Kirim ke Pending Finished)</button>
@@ -746,7 +749,7 @@ function showModal(originalIndex, reqId, itemCat, itemStat) {
       <div id="action-msg" class="text-center mt-sm font-label-md text-label-md text-outline"></div>
     `;
   }
-  else if (userRole === "engineering" && targetItemStatus === "finished") {
+  else if (userRole === "maintenance" && targetItemStatus === "finished") {
     html += `
       <div class="mt-lg pt-md border-t border-dashed border-outline-variant flex flex-wrap gap-sm" id="action-footer">
         <button class="flex-1 min-w-[140px] px-md py-sm rounded-lg font-body-md text-body-md font-semibold text-on-primary bg-primary hover:opacity-90 transition-opacity" onclick="openEditBiayaForm()">Edit Rincian Biaya</button>
@@ -755,8 +758,85 @@ function showModal(originalIndex, reqId, itemCat, itemStat) {
     `;
   }
 
+  // --- TAMBAHAN TOMBOL KIRIM EMAIL (Khusus Maintenance di Rejected / Finished) ---
+  if (userRole === "maintenance" && (targetItemStatus === "rejected" || targetItemStatus === "finished")) {
+    const emailColIdx = globalHeaders.findIndex(h => h && h.toLowerCase().includes("email"));
+    const targetEmail = emailColIdx !== -1 ? (rowData[emailColIdx] || "").trim() : "";
+
+    html += `
+      <div class="mt-lg pt-md border-t border-dashed border-outline-variant">
+        <div class="font-label-md text-label-md text-outline uppercase tracking-wider mb-xs">Kirim Notifikasi Email</div>
+        <div class="flex flex-col sm:flex-row gap-sm sm:items-center justify-between">
+          <div class="font-body-md text-body-md text-on-surface-variant flex-1">
+            ${targetEmail ? 'Kirim update status tiket ini ke: <br/><b>' + escapeHtml(targetEmail) + '</b>' : '<span class="text-error font-semibold">Alamat email pemohon tidak ditemukan di tabel.</span>'}
+          </div>
+          <button class="px-md py-sm rounded-lg font-body-md text-body-md font-semibold text-on-primary bg-primary hover:opacity-90 transition-opacity flex justify-center items-center gap-xs shrink-0"
+            onclick="sendEmailNotification('${targetEmail}')" ${!targetEmail ? 'disabled style="opacity: 0.5; cursor: not-allowed;"' : ''}>
+            <span class="material-symbols-outlined text-[18px]">mail</span> Kirim Email
+          </button>
+        </div>
+        <div id="email-action-msg" class="text-center font-label-md text-label-md mt-sm text-outline"></div>
+      </div>
+    `;
+  }
+
   modalBody.innerHTML = html;
   modalOverlay.style.display = "flex";
+}
+
+// Fungsi Panggil API Kirim Email
+async function sendEmailNotification(emailAddress) {
+  if (!emailAddress) return;
+  if (!confirm(`Kirim email notifikasi perubahan status WO ke ${emailAddress}?`)) return;
+
+  const msgBox = document.getElementById("email-action-msg");
+  if (msgBox) {
+    msgBox.textContent = "Mengirim email, mohon tunggu...";
+    msgBox.className = "text-center font-label-md text-label-md text-outline mt-sm";
+  }
+
+  const rejectIdx = globalHeaders.findIndex(h => h.toLowerCase().includes("alasan reject"));
+  const biayaIdx = globalHeaders.findIndex(h => h.toLowerCase().includes("biaya"));
+
+  let extraInfo = "";
+  if (targetItemStatus === "rejected" && rejectIdx !== -1) {
+     extraInfo = "Alasan Reject: " + (targetRowData[rejectIdx] || "-");
+  } else if (targetItemStatus === "finished" && biayaIdx !== -1) {
+     extraInfo = "Rincian Biaya:\n" + (targetRowData[biayaIdx] || "-");
+  }
+
+  try {
+    const res = await fetch(LOGIN_API_URL, {
+      method: "POST",
+      headers: { "Content-Type": "text/plain;charset=utf-8" },
+      body: JSON.stringify({
+        type: "send_email",
+        requestId: targetRequestId,
+        status: targetItemStatus,
+        category: targetItemCategory,
+        email: emailAddress,
+        extraInfo: extraInfo
+      })
+    });
+    const result = await res.json();
+
+    if (result.success) {
+      if (msgBox) { 
+        msgBox.textContent = "Email berhasil dikirim!"; 
+        msgBox.className = "text-center font-label-md text-label-md text-secondary mt-sm"; 
+      }
+    } else {
+      if (msgBox) { 
+        msgBox.textContent = "Gagal: " + result.message; 
+        msgBox.className = "text-center font-label-md text-label-md text-error mt-sm"; 
+      }
+    }
+  } catch (err) {
+    if (msgBox) { 
+      msgBox.textContent = "Gagal menghubungi server."; 
+      msgBox.className = "text-center font-label-md text-label-md text-error mt-sm"; 
+    }
+  }
 }
 
 async function executeAction(actionType, extra) {
@@ -1114,7 +1194,7 @@ const roleBadge = document.getElementById("user-role-badge");
 const roleBadgeText = document.getElementById("user-role-badge-text");
 
 function applyRoleUI(role) {
-  filterBagianSelect.style.display = (role === "engineering") ? "inline-block" : "none";
+  filterBagianSelect.style.display = (role === "maintenance") ? "inline-block" : "none";
 }
 
 if (sessionStorage.getItem("loggedIn") === "true") {
