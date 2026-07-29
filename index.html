@@ -100,9 +100,9 @@
 <!-- LAYAR LOGIN -->
 <!-- ============================================================ -->
 <div id="login-screen" class="min-h-screen flex items-center justify-center px-margin-mobile">
-  <div class="w-full max-w-sm bg-surface-container-lowest rounded-xl custom-shadow border border-outline-variant/30 p-xl">
+  <div class="w-full max-w-sm bg-surface-container-lowest rounded-xl custom-shadow border border-outline-variant/30 p-lg md:p-xl">
     <div class="flex flex-col items-center text-center mb-lg">
-      <span class="text-headline-md font-headline-md font-bold text-primary">SIMANTAP</span>
+      <span class="text-headline-sm md:text-headline-md font-headline-md font-bold text-primary">SIMANTAP</span>
       <span class="text-[10px] uppercase tracking-widest text-outline mt-1 font-bold">Industrial Work Order</span>
       <p class="font-body-md text-body-md text-on-surface-variant mt-md">Silakan masuk untuk melanjutkan</p>
     </div>
@@ -132,40 +132,40 @@
 <div id="app-content" style="display:none;">
 
   <header class="sticky top-0 z-50 bg-surface-container-lowest shadow-sm">
-    <div class="flex justify-between items-center w-full px-margin-desktop py-md max-w-7xl mx-auto">
-      <div class="flex items-center gap-md">
-        <img src="logo%20inl.png" alt="Logo INL" class="h-20 w-auto object-contain" style="mix-blend-mode:multiply;">
-        <img src="logo%20ptpn.png" alt="Logo PTPN" class="h-11 w-auto object-contain" style="mix-blend-mode:multiply;">
+    <div class="flex justify-between items-center w-full px-margin-mobile md:px-margin-desktop py-sm md:py-md max-w-7xl mx-auto">
+      <div class="flex items-center gap-sm md:gap-md">
+        <img src="logo%20inl.png" alt="Logo INL" class="h-10 md:h-20 w-auto object-contain" style="mix-blend-mode:multiply;">
+        <img src="logo%20ptpn.png" alt="Logo PTPN" class="h-6 md:h-11 w-auto object-contain" style="mix-blend-mode:multiply;">
         <div class="h-8 w-px bg-outline-variant/50 mx-xs hidden sm:block"></div>
         <div class="flex flex-col">
-          <span class="text-headline-md font-headline-md font-bold text-primary">SIMANTAP</span>
-          <span class="text-[10px] uppercase tracking-widest text-outline -mt-1 font-bold">Industrial Work Order</span>
+          <span class="text-headline-sm md:text-headline-md font-headline-md font-bold text-primary">SIMANTAP</span>
+          <span class="text-[8px] md:text-[10px] uppercase tracking-widest text-outline md:-mt-1 font-bold">Industrial Work Order</span>
         </div>
       </div>
-      <div class="flex items-center gap-md">
+      <div class="flex items-center gap-xs md:gap-md">
         <div id="user-role-badge" class="hidden sm:flex items-center gap-xs px-md py-sm rounded-lg bg-surface-container-high text-on-surface-variant font-body-md text-body-md font-semibold">
           <span class="material-symbols-outlined text-[18px]">account_circle</span>
           <span id="user-role-badge-text"></span>
         </div>
-        <button id="logout-btn" class="px-md py-sm rounded-lg bg-error-container text-on-error-container hover:bg-error hover:text-on-error transition-all font-body-md text-body-md font-semibold">
-          Keluar Dashboard
+        <button id="logout-btn" class="px-sm md:px-md py-sm rounded-lg bg-error-container text-on-error-container hover:bg-error hover:text-on-error transition-all font-body-md text-[12px] md:text-body-md font-semibold whitespace-nowrap">
+          Keluar
         </button>
       </div>
     </div>
   </header>
 
-  <main class="max-w-7xl mx-auto px-margin-desktop py-xl">
+  <main class="max-w-7xl mx-auto px-margin-mobile md:px-margin-desktop py-lg md:py-xl">
 
     <!-- Hero -->
-    <section class="mb-xl text-center md:text-left">
-      <div class="flex flex-col md:flex-row md:items-end justify-between gap-lg">
+    <section class="mb-lg md:mb-xl text-center md:text-left">
+      <div class="flex flex-col md:flex-row md:items-end justify-between gap-md md:gap-lg">
         <div>
-          <h1 class="font-headline-lg text-headline-lg text-on-background mb-sm">Pantau Tiket Real-time</h1>
-          <p class="font-body-lg text-body-lg text-on-surface-variant max-w-2xl">
+          <h1 class="font-headline-sm md:font-headline-lg text-headline-sm md:text-headline-lg text-on-background mb-xs md:mb-sm">Pantau Tiket Real-time</h1>
+          <p class="font-body-md md:font-body-lg text-body-md md:text-body-lg text-on-surface-variant max-w-2xl">
             Sistem Manajemen Operasional Terpadu untuk pemeliharaan dan pemantauan infrastruktur.
           </p>
         </div>
-        <div class="inline-flex items-center gap-sm bg-surface-container-low px-md py-sm rounded-full self-center md:self-start">
+        <div class="inline-flex items-center gap-sm bg-surface-container-low px-md py-sm rounded-full self-center md:self-start shrink-0">
           <span class="relative flex h-3 w-3">
             <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-secondary opacity-75"></span>
             <span class="relative inline-flex rounded-full h-3 w-3 bg-secondary"></span>
@@ -176,42 +176,42 @@
     </section>
 
     <!-- Segmented Main Menu -->
-    <div class="flex flex-wrap gap-sm mb-lg bg-surface-container-low p-sm rounded-xl max-w-fit">
-      <button class="btn-main active px-lg py-sm rounded-lg font-body-md text-body-md font-semibold transition-all" data-category="master">Master WO</button>
-      <button class="btn-main px-lg py-sm rounded-lg font-body-md text-body-md font-semibold transition-all" data-category="mechanical">Mechanical</button>
-      <button class="btn-main px-lg py-sm rounded-lg font-body-md text-body-md font-semibold transition-all" data-category="electrical">Electrical</button>
-      <button class="btn-main px-lg py-sm rounded-lg font-body-md text-body-md font-semibold transition-all" data-category="modification">Modification</button>
+    <div class="flex flex-wrap gap-sm mb-md md:mb-lg bg-surface-container-low p-sm rounded-xl w-full md:max-w-fit">
+      <button class="btn-main active flex-1 md:flex-none px-sm md:px-lg py-sm rounded-lg font-body-md text-[13px] md:text-body-md font-semibold transition-all" data-category="master">Master WO</button>
+      <button class="btn-main flex-1 md:flex-none px-sm md:px-lg py-sm rounded-lg font-body-md text-[13px] md:text-body-md font-semibold transition-all" data-category="mechanical">Mechanical</button>
+      <button class="btn-main flex-1 md:flex-none px-sm md:px-lg py-sm rounded-lg font-body-md text-[13px] md:text-body-md font-semibold transition-all" data-category="electrical">Electrical</button>
+      <button class="btn-main flex-1 md:flex-none px-sm md:px-lg py-sm rounded-lg font-body-md text-[13px] md:text-body-md font-semibold transition-all" data-category="modification">Modification</button>
     </div>
 
     <!-- Sub Menu (status) -->
     <div class="flex flex-wrap gap-sm mb-lg" id="sub-menu-container" style="display:none;">
-      <button class="btn-sub active px-lg py-sm rounded-full font-body-md text-body-md font-semibold transition-all" data-status="pending">Pending Approval</button>
-      <button class="btn-sub px-lg py-sm rounded-full font-body-md text-body-md font-semibold transition-all" data-status="approved">On Progress</button>
-      <button class="btn-sub px-lg py-sm rounded-full font-body-md text-body-md font-semibold transition-all" data-status="pending_finished">Pending Finished</button>
-      <button class="btn-sub px-lg py-sm rounded-full font-body-md text-body-md font-semibold transition-all" data-status="finished">Finished</button>
-      <button class="btn-sub px-lg py-sm rounded-full font-body-md text-body-md font-semibold transition-all" data-status="rejected">Rejected</button>
+      <button class="btn-sub active px-md md:px-lg py-sm rounded-full font-body-md text-[13px] md:text-body-md font-semibold transition-all" data-status="pending">Pending Approval</button>
+      <button class="btn-sub px-md md:px-lg py-sm rounded-full font-body-md text-[13px] md:text-body-md font-semibold transition-all" data-status="approved">On Progress</button>
+      <button class="btn-sub px-md md:px-lg py-sm rounded-full font-body-md text-[13px] md:text-body-md font-semibold transition-all" data-status="pending_finished">Pending Finished</button>
+      <button class="btn-sub px-md md:px-lg py-sm rounded-full font-body-md text-[13px] md:text-body-md font-semibold transition-all" data-status="finished">Finished</button>
+      <button class="btn-sub px-md md:px-lg py-sm rounded-full font-body-md text-[13px] md:text-body-md font-semibold transition-all" data-status="rejected">Rejected</button>
     </div>
 
     <!-- Filter & Action Bar -->
-    <div class="flex flex-col md:flex-row items-center justify-between gap-md bg-surface-container-lowest p-md rounded-xl custom-shadow border border-outline-variant/30 mb-gutter">
-      <div class="flex flex-wrap items-center gap-md w-full md:w-auto">
-        <select id="filter-type" class="px-md py-sm bg-surface rounded-lg border border-outline-variant focus:ring-primary focus:border-primary font-body-md text-body-md outline-none">
+    <div class="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-md bg-surface-container-lowest p-md rounded-xl custom-shadow border border-outline-variant/30 mb-gutter">
+      <div class="flex flex-col sm:flex-row flex-wrap items-stretch sm:items-center gap-sm md:gap-md w-full md:w-auto">
+        <select id="filter-type" class="w-full sm:w-auto px-md py-sm bg-surface rounded-lg border border-outline-variant focus:ring-primary focus:border-primary font-body-md text-body-md outline-none">
           <option value="all">Semua Waktu</option>
           <option value="single">Tanggal Tertentu</option>
           <option value="range">Rentang Tanggal</option>
         </select>
 
-        <div id="filter-date-1-container" style="display:none;" class="items-center gap-sm">
-          <span class="font-body-md text-body-md text-outline">Tgl:</span>
-          <input type="date" id="filter-date-1" class="px-md py-sm bg-surface rounded-lg border border-outline-variant focus:ring-primary focus:border-primary font-body-md text-body-md outline-none">
+        <div id="filter-date-1-container" style="display:none;" class="flex-col sm:flex-row items-stretch sm:items-center gap-xs sm:gap-sm w-full sm:w-auto">
+          <span class="font-body-md text-body-md text-outline hidden sm:inline">Tgl:</span>
+          <input type="date" id="filter-date-1" class="w-full sm:w-auto px-md py-sm bg-surface rounded-lg border border-outline-variant focus:ring-primary focus:border-primary font-body-md text-body-md outline-none">
         </div>
 
-        <div id="filter-date-2-container" style="display:none;" class="items-center gap-sm">
-          <span class="font-body-md text-body-md text-outline">s/d</span>
-          <input type="date" id="filter-date-2" class="px-md py-sm bg-surface rounded-lg border border-outline-variant focus:ring-primary focus:border-primary font-body-md text-body-md outline-none">
+        <div id="filter-date-2-container" style="display:none;" class="flex-col sm:flex-row items-stretch sm:items-center gap-xs sm:gap-sm w-full sm:w-auto">
+          <span class="font-body-md text-body-md text-outline text-center">s/d</span>
+          <input type="date" id="filter-date-2" class="w-full sm:w-auto px-md py-sm bg-surface rounded-lg border border-outline-variant focus:ring-primary focus:border-primary font-body-md text-body-md outline-none">
         </div>
 
-        <select id="filter-bagian" style="display:none;" class="px-md py-sm bg-surface rounded-lg border border-outline-variant focus:ring-primary focus:border-primary font-body-md text-body-md outline-none">
+        <select id="filter-bagian" style="display:none;" class="w-full sm:w-auto px-md py-sm bg-surface rounded-lg border border-outline-variant focus:ring-primary focus:border-primary font-body-md text-body-md outline-none">
           <option value="">Semua Bagian</option>
           <option value="utility">Utility</option>
           <option value="produksi">Produksi</option>
@@ -221,9 +221,9 @@
           <option value="CORSEC">CORSEC</option>
         </select>
 
-        <button id="btn-apply-filter" class="px-lg py-sm bg-primary text-on-primary rounded-lg font-body-md text-body-md font-semibold hover:opacity-90 transition-opacity flex items-center gap-xs">
+        <button id="btn-apply-filter" class="w-full sm:w-auto justify-center px-lg py-sm bg-primary text-on-primary rounded-lg font-body-md text-body-md font-semibold hover:opacity-90 transition-opacity flex items-center gap-xs">
           <span class="material-symbols-outlined text-[18px]">filter_list</span>
-          Terapkan Filter
+          Terapkan
         </button>
       </div>
 
@@ -243,8 +243,8 @@
             <h3 class="font-headline-sm text-headline-sm text-on-background mb-xs">Ringkasan</h3>
             <p class="font-body-md text-body-md text-outline">Total tiket pada tampilan saat ini</p>
           </div>
-          <div class="mt-xl">
-            <span id="summary-count" class="text-[64px] font-bold text-primary leading-none">00</span>
+          <div class="mt-md md:mt-xl">
+            <span id="summary-count" class="text-[48px] md:text-[64px] font-bold text-primary leading-none">00</span>
             <div class="flex items-center gap-xs text-secondary mt-sm">
               <span class="material-symbols-outlined text-[16px]">check_circle</span>
               <span id="summary-label" class="font-label-md text-label-md">0 TIKET DITEMUKAN</span>
@@ -256,11 +256,11 @@
       <!-- Main Data Card -->
       <div class="col-span-12 md:col-span-8 lg:col-span-9">
         <div class="bg-surface-container-lowest rounded-xl custom-shadow border border-outline-variant/30 overflow-hidden">
-          <div class="bg-surface-container-low px-lg py-md border-b border-outline-variant/30 flex justify-between items-center">
-            <h2 id="panel-title" class="font-headline-sm text-headline-sm text-on-background">Seluruh Data Master WO</h2>
-            <span class="bg-primary-container/20 text-primary px-sm py-xs rounded font-label-md text-label-md">LIVE</span>
+          <div class="bg-surface-container-low px-md md:px-lg py-md border-b border-outline-variant/30 flex justify-between items-center">
+            <h2 id="panel-title" class="font-headline-sm text-[16px] md:text-headline-sm text-on-background truncate mr-sm">Seluruh Data Master WO</h2>
+            <span class="bg-primary-container/20 text-primary px-sm py-xs rounded font-label-md text-label-md shrink-0">LIVE</span>
           </div>
-          <div class="p-lg space-y-md" id="panel">
+          <div class="p-sm md:p-lg space-y-sm md:space-y-md" id="panel">
             <div class="text-center py-lg font-body-md text-body-md text-outline">Memuat data...</div>
           </div>
         </div>
@@ -275,11 +275,11 @@
 <!-- ============================================================ -->
 <div class="modal-overlay" id="modal-overlay">
   <div class="modal-content bg-surface-container-lowest rounded-xl custom-shadow border border-outline-variant/30">
-    <div class="flex justify-between items-center px-lg py-md border-b border-outline-variant/30 bg-surface-container-low rounded-t-xl">
-      <h3 id="modal-title" class="font-headline-sm text-headline-sm text-on-background">Detail Work Order</h3>
+    <div class="flex justify-between items-center px-md md:px-lg py-md border-b border-outline-variant/30 bg-surface-container-low rounded-t-xl">
+      <h3 id="modal-title" class="font-headline-sm text-[18px] md:text-headline-sm text-on-background">Detail Work Order</h3>
       <button class="close-btn text-outline hover:text-error transition-colors text-2xl leading-none" id="modal-close">&times;</button>
     </div>
-    <div class="modal-body p-lg" id="modal-body"></div>
+    <div class="modal-body p-md md:p-lg" id="modal-body"></div>
   </div>
 </div>
 
@@ -288,11 +288,11 @@
 <!-- ============================================================ -->
 <div class="modal-overlay" id="form-modal-overlay">
   <div class="modal-content bg-surface-container-lowest rounded-xl custom-shadow border border-outline-variant/30">
-    <div class="flex justify-between items-center px-lg py-md border-b border-outline-variant/30 bg-surface-container-low rounded-t-xl">
-      <h3 id="form-modal-title" class="font-headline-sm text-headline-sm text-on-background">Form Aksi</h3>
+    <div class="flex justify-between items-center px-md md:px-lg py-md border-b border-outline-variant/30 bg-surface-container-low rounded-t-xl">
+      <h3 id="form-modal-title" class="font-headline-sm text-[18px] md:text-headline-sm text-on-background truncate">Form Aksi</h3>
       <button class="close-btn text-outline hover:text-error transition-colors text-2xl leading-none" id="form-modal-close">&times;</button>
     </div>
-    <div class="modal-body p-lg" id="form-modal-body"></div>
+    <div class="modal-body p-md md:p-lg" id="form-modal-body"></div>
   </div>
 </div>
 
@@ -300,8 +300,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
 
 <style>
-  /* Segmented main-menu / sub-menu state styling (kept as plain CSS so
-     toggling the .active class from JS is enough, no class-name churn) */
+  /* Segmented main-menu / sub-menu state styling */
   .btn-main { color: #434655; }
   .btn-main:hover:not(.active) { background: #dce9ff; }
   .btn-main.active {
@@ -331,7 +330,7 @@ let activeStatus = "pending";
 let currentDataObjects = [];
 let globalHeaders = [];
 
-let targetRowData = []; // VARIABEL TAMBAHAN UNTUK KEPERLUAN EMAIL
+let targetRowData = [];
 let targetRequestId = "";
 let targetItemCategory = "";
 let targetItemStatus = "";
@@ -394,11 +393,7 @@ filterType.addEventListener("change", () => {
   }
 });
 
-// Filter bagian (khusus maintenance) memfilter LANGSUNG di server, jadi
-// begitu berganti pilihan kita panggil ulang fetchData(), bukan cuma
-// render ulang data yang sudah ada di memori.
 filterBagianSelect.addEventListener("change", () => { fetchData(); });
-
 btnApplyFilter.addEventListener("click", () => { renderData(); });
 
 function getFilterPeriodLabel() {
@@ -483,7 +478,7 @@ function findColumnsIndex(header) {
 }
 
 // ============================================================================
-// AMBIL DATA -- LANGSUNG dari Spreadsheet lewat doGet
+// AMBIL DATA
 // ============================================================================
 async function fetchData() {
   panel.innerHTML = `<div class="text-center py-lg font-body-md text-body-md text-outline">Memuat data...</div>`;
@@ -559,7 +554,6 @@ async function fetchData() {
   }
 }
 
-// Badge styling helpers (mengikuti bahasa visual badge di doc rujukan)
 const CATEGORY_BADGE_CLASSES = {
   mechanical: "bg-orange-50 text-orange-700 border border-orange-200",
   electrical: "bg-blue-50 text-blue-700 border border-blue-200",
@@ -655,25 +649,25 @@ function renderData() {
     return `
       <div onclick="showModal(${item.originalIndex}, '${item.req}', '${item.itemCat}', '${item.itemStat}')"
         class="flex flex-col sm:flex-row items-start sm:items-center justify-between p-md bg-white border border-outline-variant/20 rounded-lg hover:border-primary/30 hover:shadow-sm transition-all cursor-pointer group">
-        <div class="flex items-center gap-md">
-          <div class="w-12 h-12 rounded-full bg-surface-container-high flex items-center justify-center text-primary font-bold text-headline-sm shrink-0">
+        <div class="flex items-center gap-sm md:gap-md w-full sm:w-auto">
+          <div class="w-10 h-10 md:w-12 md:h-12 rounded-full bg-surface-container-high flex items-center justify-center text-primary font-bold text-[16px] md:text-headline-sm shrink-0">
             ${idx + 1}
           </div>
-          <div>
-            <h3 class="font-body-lg text-body-lg text-on-surface group-hover:text-primary transition-colors">${topStr}</h3>
-            <div class="flex flex-wrap gap-sm mt-xs">
-              <span class="px-sm py-xs rounded font-label-md text-label-md uppercase tracking-wider ${catBadge}">
+          <div class="min-w-0 flex-1">
+            <h3 class="font-body-md md:font-body-lg text-body-md md:text-body-lg text-on-surface group-hover:text-primary transition-colors truncate">${topStr}</h3>
+            <div class="flex flex-wrap gap-xs sm:gap-sm mt-xs">
+              <span class="px-sm py-xs rounded font-label-md text-[10px] md:text-label-md uppercase tracking-wider ${catBadge}">
                 ${escapeHtml(item.itemCat)}
               </span>
-              <span class="px-sm py-xs rounded font-label-md text-label-md uppercase tracking-wider flex items-center gap-xs ${statBadge}">
+              <span class="px-sm py-xs rounded font-label-md text-[10px] md:text-label-md uppercase tracking-wider flex items-center gap-xs ${statBadge}">
                 <span class="w-1.5 h-1.5 rounded-full ${dot}"></span>
                 ${escapeHtml(item.labelStat)}
               </span>
             </div>
           </div>
         </div>
-        <div class="mt-md sm:mt-0 flex items-center gap-xs text-outline group-hover:text-primary transition-colors">
-          <span class="font-label-md text-label-md hidden sm:inline">Lihat Detail</span>
+        <div class="mt-sm sm:mt-0 ml-auto sm:ml-0 flex items-center gap-xs text-outline group-hover:text-primary transition-colors">
+          <span class="font-label-md text-[10px] md:text-label-md hidden sm:inline">Lihat Detail</span>
           <span class="material-symbols-outlined text-[20px]">chevron_right</span>
         </div>
       </div>
@@ -688,7 +682,7 @@ function escapeHtml(str) {
 }
 
 // ============================================================================
-// LOGIKA MODAL & ACTION ROLE BASED
+// LOGIKA MODAL & ACTION
 // ============================================================================
 const modalOverlay = document.getElementById("modal-overlay");
 const modalBody = document.getElementById("modal-body");
@@ -713,69 +707,67 @@ function showModal(originalIndex, reqId, itemCat, itemStat) {
     const value = rowData[i] ? rowData[i].trim() : "-";
     if (headerName !== "") {
       html += `
-        <div class="mb-md pb-md border-b border-outline-variant/20 last:border-b-0 last:mb-0 last:pb-0">
-          <div class="font-label-md text-label-md text-outline uppercase tracking-wider mb-xs">${escapeHtml(headerName)}</div>
-          <div class="font-body-md text-body-md text-on-surface whitespace-pre-wrap">${escapeHtml(value)}</div>
+        <div class="mb-sm md:mb-md pb-sm md:pb-md border-b border-outline-variant/20 last:border-b-0 last:mb-0 last:pb-0">
+          <div class="font-label-md text-[10px] md:text-label-md text-outline uppercase tracking-wider mb-xs">${escapeHtml(headerName)}</div>
+          <div class="font-body-md text-[13px] md:text-body-md text-on-surface whitespace-pre-wrap">${escapeHtml(value)}</div>
         </div>`;
     }
   }
 
   const userRole = sessionStorage.getItem("userRole");
 
-  // Logic Tombol Action Role Based
   if (userRole === "maintenance" && targetItemStatus === "pending") {
     html += `
-      <div class="mt-lg pt-md border-t border-dashed border-outline-variant flex flex-wrap gap-sm" id="action-footer">
-        <button class="flex-1 min-w-[140px] px-md py-sm rounded-lg font-body-md text-body-md font-semibold text-on-primary bg-secondary hover:opacity-90 transition-opacity" onclick="executeAction('approved')">Terima (Approve)</button>
-        <button class="flex-1 min-w-[140px] px-md py-sm rounded-lg font-body-md text-body-md font-semibold text-on-error bg-error hover:opacity-90 transition-opacity" onclick="executeAction('rejected')">Tolak (Reject)</button>
+      <div class="mt-md md:mt-lg pt-md border-t border-dashed border-outline-variant flex flex-col sm:flex-row gap-sm" id="action-footer">
+        <button class="flex-1 w-full px-md py-sm rounded-lg font-body-md text-body-md font-semibold text-on-primary bg-secondary hover:opacity-90 transition-opacity" onclick="executeAction('approved')">Terima (Approve)</button>
+        <button class="flex-1 w-full px-md py-sm rounded-lg font-body-md text-body-md font-semibold text-on-error bg-error hover:opacity-90 transition-opacity" onclick="executeAction('rejected')">Tolak (Reject)</button>
       </div>
       <div id="action-msg" class="text-center mt-sm font-label-md text-label-md text-outline"></div>
     `;
   }
   else if (userRole === "maintenance" && targetItemStatus === "approved") {
     html += `
-      <div class="mt-lg pt-md border-t border-dashed border-outline-variant flex flex-wrap gap-sm" id="action-footer">
-        <button class="flex-1 min-w-[140px] px-md py-sm rounded-lg font-body-md text-body-md font-semibold text-on-primary bg-primary hover:opacity-90 transition-opacity" onclick="openPendingFinishedForm()">Selesaikan WO (Kirim ke Pending Finished)</button>
+      <div class="mt-md md:mt-lg pt-md border-t border-dashed border-outline-variant flex flex-col sm:flex-row gap-sm" id="action-footer">
+        <button class="flex-1 w-full px-md py-sm rounded-lg font-body-md text-body-md font-semibold text-on-primary bg-primary hover:opacity-90 transition-opacity" onclick="openPendingFinishedForm()">Selesaikan WO (Kirim ke Pending Finished)</button>
       </div>
       <div id="action-msg" class="text-center mt-sm font-label-md text-label-md text-outline"></div>
     `;
   }
   else if (userRole === "user" && targetItemStatus === "pending_finished") {
     html += `
-      <div class="mt-lg pt-md border-t border-dashed border-outline-variant flex flex-wrap gap-sm" id="action-footer">
-        <button class="flex-1 min-w-[140px] px-md py-sm rounded-lg font-body-md text-body-md font-semibold text-on-primary bg-secondary hover:opacity-90 transition-opacity" onclick="executeAction('finished')">Konfirmasi WO Selesai</button>
-        <button class="flex-1 min-w-[140px] px-md py-sm rounded-lg font-body-md text-body-md font-semibold text-on-error bg-error hover:opacity-90 transition-opacity" onclick="openReopenForm()">Belum Sesuai (Kembalikan)</button>
+      <div class="mt-md md:mt-lg pt-md border-t border-dashed border-outline-variant flex flex-col sm:flex-row gap-sm" id="action-footer">
+        <button class="flex-1 w-full px-md py-sm rounded-lg font-body-md text-body-md font-semibold text-on-primary bg-secondary hover:opacity-90 transition-opacity" onclick="executeAction('finished')">Konfirmasi WO Selesai</button>
+        <button class="flex-1 w-full px-md py-sm rounded-lg font-body-md text-body-md font-semibold text-on-error bg-error hover:opacity-90 transition-opacity" onclick="openReopenForm()">Belum Sesuai (Kembalikan)</button>
       </div>
       <div id="action-msg" class="text-center mt-sm font-label-md text-label-md text-outline"></div>
     `;
   }
   else if (userRole === "maintenance" && targetItemStatus === "finished") {
     html += `
-      <div class="mt-lg pt-md border-t border-dashed border-outline-variant flex flex-wrap gap-sm" id="action-footer">
-        <button class="flex-1 min-w-[140px] px-md py-sm rounded-lg font-body-md text-body-md font-semibold text-on-primary bg-primary hover:opacity-90 transition-opacity" onclick="openEditBiayaForm()">Edit Rincian Biaya</button>
+      <div class="mt-md md:mt-lg pt-md border-t border-dashed border-outline-variant flex flex-col sm:flex-row gap-sm" id="action-footer">
+        <button class="flex-1 w-full px-md py-sm rounded-lg font-body-md text-body-md font-semibold text-on-primary bg-primary hover:opacity-90 transition-opacity" onclick="openEditBiayaForm()">Edit Rincian Biaya</button>
       </div>
       <div id="action-msg" class="text-center mt-sm font-label-md text-label-md text-outline"></div>
     `;
   }
 
-  // --- TAMBAHAN TOMBOL KIRIM EMAIL (Khusus Maintenance di Rejected / Finished) ---
   if (userRole === "maintenance" && (targetItemStatus === "rejected" || targetItemStatus === "finished")) {
     const emailColIdx = globalHeaders.findIndex(h => h && h.toLowerCase().includes("email"));
     const targetEmail = emailColIdx !== -1 ? (rowData[emailColIdx] || "").trim() : "";
 
     html += `
-      <div class="mt-lg pt-md border-t border-dashed border-outline-variant">
-        <div class="font-label-md text-label-md text-outline uppercase tracking-wider mb-xs">Kirim Notifikasi Email</div>
+      <div class="mt-md md:mt-lg pt-md border-t border-dashed border-outline-variant">
+        <div class="font-label-md text-[10px] md:text-label-md text-outline uppercase tracking-wider mb-xs">Kirim Notifikasi Email</div>
         <div class="flex flex-col sm:flex-row gap-sm sm:items-center justify-between">
-          <div class="font-body-md text-body-md text-on-surface-variant flex-1">
-            ${targetEmail ? 'Kirim update status tiket ini ke: <br/><b>' + escapeHtml(targetEmail) + '</b>' : '<span class="text-error font-semibold">Alamat email pemohon tidak ditemukan di tabel.</span>'}
+          <div class="font-body-md text-[13px] md:text-body-md text-on-surface-variant flex-1 truncate">
+            ${targetEmail ? 'Kirim update status ke: <br/><b>' + escapeHtml(targetEmail) + '</b>' : '<span class="text-error font-semibold">Alamat email tidak ditemukan.</span>'}
           </div>
-          <button class="px-md py-sm rounded-lg font-body-md text-body-md font-semibold text-on-primary bg-primary hover:opacity-90 transition-opacity flex justify-center items-center gap-xs shrink-0"
+          <button class="w-full sm:w-auto px-md py-sm rounded-lg font-body-md text-body-md font-semibold text-on-primary bg-primary hover:opacity-90 transition-opacity flex justify-center items-center gap-xs shrink-0"
             onclick="sendEmailNotification('${targetEmail}')" ${!targetEmail ? 'disabled style="opacity: 0.5; cursor: not-allowed;"' : ''}>
             <span class="material-symbols-outlined text-[18px]">mail</span> Kirim Email
           </button>
         </div>
-        <div id="email-action-msg" class="text-center font-label-md text-label-md mt-sm text-outline"></div>
+        <div id="email-action-msg" class="text-center font-label-md text-[10px] md:text-label-md mt-sm text-outline"></div>
       </div>
     `;
   }
@@ -784,7 +776,6 @@ function showModal(originalIndex, reqId, itemCat, itemStat) {
   modalOverlay.style.display = "flex";
 }
 
-// Fungsi Panggil API Kirim Email
 async function sendEmailNotification(emailAddress) {
   if (!emailAddress) return;
   if (!confirm(`Kirim email notifikasi perubahan status WO ke ${emailAddress}?`)) return;
@@ -792,7 +783,7 @@ async function sendEmailNotification(emailAddress) {
   const msgBox = document.getElementById("email-action-msg");
   if (msgBox) {
     msgBox.textContent = "Mengirim email, mohon tunggu...";
-    msgBox.className = "text-center font-label-md text-label-md text-outline mt-sm";
+    msgBox.className = "text-center font-label-md text-[10px] md:text-label-md text-outline mt-sm";
   }
 
   const rejectIdx = globalHeaders.findIndex(h => h.toLowerCase().includes("alasan reject"));
@@ -823,18 +814,18 @@ async function sendEmailNotification(emailAddress) {
     if (result.success) {
       if (msgBox) { 
         msgBox.textContent = "Email berhasil dikirim!"; 
-        msgBox.className = "text-center font-label-md text-label-md text-secondary mt-sm"; 
+        msgBox.className = "text-center font-label-md text-[10px] md:text-label-md text-secondary mt-sm"; 
       }
     } else {
       if (msgBox) { 
         msgBox.textContent = "Gagal: " + result.message; 
-        msgBox.className = "text-center font-label-md text-label-md text-error mt-sm"; 
+        msgBox.className = "text-center font-label-md text-[10px] md:text-label-md text-error mt-sm"; 
       }
     }
   } catch (err) {
     if (msgBox) { 
       msgBox.textContent = "Gagal menghubungi server."; 
-      msgBox.className = "text-center font-label-md text-label-md text-error mt-sm"; 
+      msgBox.className = "text-center font-label-md text-[10px] md:text-label-md text-error mt-sm"; 
     }
   }
 }
@@ -871,8 +862,8 @@ async function executeAction(actionType, extra) {
 
   if (msgBox) {
     msgBox.textContent = photos.length > 0
-      ? `Mengunggah ${photos.length} foto & memproses data ke server, mohon tunggu...`
-      : "Memproses data ke server, mohon tunggu...";
+      ? `Mengunggah ${photos.length} foto & memproses data...`
+      : "Memproses data ke server...";
     msgBox.className = "text-center mt-sm font-label-md text-label-md text-outline";
   }
 
@@ -922,7 +913,7 @@ async function executeAction(actionType, extra) {
 }
 
 // ============================================================================
-// FORM AKSI: Biaya bertahap (multi-baris) + Upload Foto Bukti
+// FORM AKSI
 // ============================================================================
 const formModalOverlay = document.getElementById("form-modal-overlay");
 const formModalBody = document.getElementById("form-modal-body");
@@ -998,7 +989,7 @@ function renderPhotoPreviews(containerId) {
   container.innerHTML = selectedPhotos.map((p, idx) => `
     <div class="relative rounded-lg overflow-hidden border border-outline-variant/40 aspect-square">
       <img src="${p.previewUrl}" alt="preview" class="w-full h-full object-cover">
-      <button type="button" class="absolute top-1 right-1 w-6 h-6 rounded-full bg-on-background/70 text-white text-sm leading-none" onclick="removeSelectedPhoto(${idx}, '${containerId}')">&times;</button>
+      <button type="button" class="absolute top-1 right-1 w-6 h-6 rounded-full bg-on-background/70 text-white text-sm leading-none flex justify-center items-center" onclick="removeSelectedPhoto(${idx}, '${containerId}')">&times;</button>
     </div>
   `).join("");
 }
@@ -1011,7 +1002,7 @@ function removeSelectedPhoto(idx, containerId) {
 function openPendingFinishedForm() {
   biayaRows = [{ desc: "", harga: "" }];
   selectedPhotos = [];
-  formModalTitle.textContent = "Selesaikan WO — Rincian Biaya & Bukti Foto";
+  formModalTitle.textContent = "Selesaikan WO";
   renderPendingFinishedForm();
   formModalOverlay.style.display = "flex";
 }
@@ -1019,7 +1010,7 @@ function openPendingFinishedForm() {
 function renderPendingFinishedForm() {
   const total = biayaRows.reduce((sum, r) => sum + (Number(r.harga) || 0), 0);
   formModalBody.innerHTML = `
-    <div class="font-label-md text-label-md text-outline uppercase tracking-wider mb-sm">Rincian Biaya Perbaikan</div>
+    <div class="font-label-md text-[10px] md:text-label-md text-outline uppercase tracking-wider mb-sm">Rincian Biaya Perbaikan</div>
     <div id="biaya-rows-container" class="flex flex-col gap-sm"></div>
     <button type="button" class="mt-xs w-full px-md py-sm rounded-lg border border-dashed border-outline-variant text-outline hover:text-primary hover:border-primary font-body-md text-body-md font-semibold transition-all" id="btn-add-biaya-row">+ Tambah Baris</button>
     <div class="flex justify-between items-center mt-md pt-md border-t border-dashed border-outline-variant font-body-md text-body-md font-semibold">
@@ -1027,17 +1018,17 @@ function renderPendingFinishedForm() {
       <span class="text-secondary text-headline-sm font-headline-sm" id="biaya-total-display">${formatRupiah(total)}</span>
     </div>
 
-    <div class="my-lg border-t border-dashed border-outline-variant"></div>
+    <div class="my-md md:my-lg border-t border-dashed border-outline-variant"></div>
 
-    <div class="font-label-md text-label-md text-outline uppercase tracking-wider mb-sm">Bukti Foto Perbaikan</div>
-    <input type="file" id="pf-photo-input" accept="image/*" multiple class="w-full px-md py-sm border border-dashed border-outline-variant rounded-lg font-body-md text-body-md text-on-surface-variant">
-    <div class="grid grid-cols-4 sm:grid-cols-5 gap-sm mt-md" id="pf-photo-preview"></div>
+    <div class="font-label-md text-[10px] md:text-label-md text-outline uppercase tracking-wider mb-sm">Bukti Foto Perbaikan</div>
+    <input type="file" id="pf-photo-input" accept="image/*" multiple class="w-full px-sm md:px-md py-sm border border-dashed border-outline-variant rounded-lg font-body-md text-[12px] md:text-body-md text-on-surface-variant">
+    <div class="grid grid-cols-3 sm:grid-cols-5 gap-sm mt-md" id="pf-photo-preview"></div>
 
-    <div class="mt-lg pt-md border-t border-dashed border-outline-variant flex gap-sm" id="form-action-footer">
-      <button class="flex-1 px-md py-sm rounded-lg border border-outline-variant text-on-surface-variant font-body-md text-body-md font-semibold hover:bg-surface-container transition-all" type="button" onclick="closeFormModal()">Batal</button>
-      <button class="flex-1 px-md py-sm rounded-lg bg-primary text-on-primary font-body-md text-body-md font-semibold hover:opacity-90 transition-opacity" type="button" id="btn-submit-pending-finished">Kirim ke Pending Finished</button>
+    <div class="mt-md md:mt-lg pt-md border-t border-dashed border-outline-variant flex flex-col sm:flex-row gap-sm" id="form-action-footer">
+      <button class="w-full sm:flex-1 px-md py-sm rounded-lg border border-outline-variant text-on-surface-variant font-body-md text-body-md font-semibold hover:bg-surface-container transition-all" type="button" onclick="closeFormModal()">Batal</button>
+      <button class="w-full sm:flex-1 px-md py-sm rounded-lg bg-primary text-on-primary font-body-md text-body-md font-semibold hover:opacity-90 transition-opacity" type="button" id="btn-submit-pending-finished">Kirim</button>
     </div>
-    <div id="form-action-msg" class="text-center mt-sm font-label-md text-label-md text-outline"></div>
+    <div id="form-action-msg" class="text-center mt-sm font-label-md text-[10px] md:text-label-md text-outline"></div>
   `;
 
   renderBiayaRows();
@@ -1053,13 +1044,14 @@ function renderPendingFinishedForm() {
 
 function renderBiayaRows() {
   const container = document.getElementById("biaya-rows-container");
+  // Update: Grid diubah agar responsif di HP (Description lebih luas).
   container.innerHTML = biayaRows.map((row, idx) => `
-    <div class="grid grid-cols-[1fr_140px_36px] gap-sm items-center">
-      <input type="text" placeholder="Deskripsi pengeluaran (mis. Ganti bearing)" value="${escapeHtml(row.desc)}" data-idx="${idx}" data-field="desc"
-        class="px-md py-sm bg-surface rounded-lg border border-outline-variant focus:ring-primary focus:border-primary font-body-md text-body-md outline-none">
-      <input type="number" min="0" placeholder="Harga (Rp)" value="${row.harga}" data-idx="${idx}" data-field="harga"
-        class="px-md py-sm bg-surface rounded-lg border border-outline-variant focus:ring-primary focus:border-primary font-body-md text-body-md outline-none">
-      <button type="button" class="w-9 h-9 rounded-lg border border-error text-error bg-error-container/40 hover:bg-error-container transition-all" ${biayaRows.length <= 1 ? "disabled" : ""} data-idx="${idx}">&times;</button>
+    <div class="grid grid-cols-[1fr_90px_32px] sm:grid-cols-[1fr_140px_36px] gap-xs sm:gap-sm items-center">
+      <input type="text" placeholder="Deskripsi (mis. Ganti bearing)" value="${escapeHtml(row.desc)}" data-idx="${idx}" data-field="desc"
+        class="px-sm md:px-md py-sm bg-surface rounded-lg border border-outline-variant focus:ring-primary focus:border-primary font-body-md text-[13px] md:text-body-md outline-none">
+      <input type="number" min="0" placeholder="Harga" value="${row.harga}" data-idx="${idx}" data-field="harga"
+        class="px-sm md:px-md py-sm bg-surface rounded-lg border border-outline-variant focus:ring-primary focus:border-primary font-body-md text-[13px] md:text-body-md outline-none">
+      <button type="button" class="w-8 h-8 sm:w-9 sm:h-9 rounded-lg border border-error text-error bg-error-container/40 hover:bg-error-container transition-all flex justify-center items-center" ${biayaRows.length <= 1 ? "disabled" : ""} data-idx="${idx}">&times;</button>
     </div>
   `).join("");
 
@@ -1105,25 +1097,25 @@ function submitPendingFinishedForm() {
 }
 
 function openEditBiayaForm() {
-  formModalTitle.textContent = "Edit Rincian Biaya (Finished)";
+  formModalTitle.textContent = "Edit Rincian Biaya";
   renderEditBiayaForm();
   formModalOverlay.style.display = "flex";
 }
 
 function renderEditBiayaForm() {
   formModalBody.innerHTML = `
-    <div class="font-label-md text-label-md text-outline uppercase tracking-wider mb-xs">Rincian Biaya</div>
-    <p class="font-body-md text-body-md text-on-surface-variant mb-md">
+    <div class="font-label-md text-[10px] md:text-label-md text-outline uppercase tracking-wider mb-xs">Rincian Biaya</div>
+    <p class="font-body-md text-[12px] md:text-body-md text-on-surface-variant mb-md">
       Silakan ubah, hapus, atau tambahkan baris apa pun secara bebas sesuai kebutuhan pembukuan.
       Sistem tidak akan menghitung ulang total secara otomatis — pastikan Anda memperbarui totalnya sendiri jika diperlukan.
     </p>
-    <textarea id="edit-biaya-textarea" class="w-full min-h-[240px] px-md py-sm bg-surface rounded-lg border border-outline-variant focus:ring-primary focus:border-primary font-body-md text-body-md outline-none">${escapeHtml(targetCurrentBiaya)}</textarea>
+    <textarea id="edit-biaya-textarea" class="w-full min-h-[200px] px-md py-sm bg-surface rounded-lg border border-outline-variant focus:ring-primary focus:border-primary font-body-md text-body-md outline-none">${escapeHtml(targetCurrentBiaya)}</textarea>
 
-    <div class="mt-lg pt-md border-t border-dashed border-outline-variant flex gap-sm" id="form-action-footer">
-      <button class="flex-1 px-md py-sm rounded-lg border border-outline-variant text-on-surface-variant font-body-md text-body-md font-semibold hover:bg-surface-container transition-all" type="button" onclick="closeFormModal()">Batal</button>
-      <button class="flex-1 px-md py-sm rounded-lg bg-primary text-on-primary font-body-md text-body-md font-semibold hover:opacity-90 transition-opacity" type="button" id="btn-submit-edit-biaya">Simpan Perubahan</button>
+    <div class="mt-md md:mt-lg pt-md border-t border-dashed border-outline-variant flex flex-col sm:flex-row gap-sm" id="form-action-footer">
+      <button class="w-full sm:flex-1 px-md py-sm rounded-lg border border-outline-variant text-on-surface-variant font-body-md text-body-md font-semibold hover:bg-surface-container transition-all" type="button" onclick="closeFormModal()">Batal</button>
+      <button class="w-full sm:flex-1 px-md py-sm rounded-lg bg-primary text-on-primary font-body-md text-body-md font-semibold hover:opacity-90 transition-opacity" type="button" id="btn-submit-edit-biaya">Simpan Perubahan</button>
     </div>
-    <div id="form-action-msg" class="text-center mt-sm font-label-md text-label-md text-outline"></div>
+    <div id="form-action-msg" class="text-center mt-sm font-label-md text-[10px] md:text-label-md text-outline"></div>
   `;
 
   document.getElementById("btn-submit-edit-biaya").addEventListener("click", submitEditBiayaForm);
@@ -1138,28 +1130,28 @@ function submitEditBiayaForm() {
 
 function openReopenForm() {
   selectedPhotos = [];
-  formModalTitle.textContent = "Kembalikan ke On Progress — Catatan & Bukti Foto";
+  formModalTitle.textContent = "Kembalikan ke On Progress";
   renderReopenForm();
   formModalOverlay.style.display = "flex";
 }
 
 function renderReopenForm() {
   formModalBody.innerHTML = `
-    <div class="font-label-md text-label-md text-outline uppercase tracking-wider mb-xs">Catatan Kenapa Belum Sesuai</div>
-    <textarea id="reopen-note" placeholder="Contoh: Kebocoran masih ada di sambungan pipa, mohon diperiksa ulang..."
+    <div class="font-label-md text-[10px] md:text-label-md text-outline uppercase tracking-wider mb-xs">Catatan Kenapa Belum Sesuai</div>
+    <textarea id="reopen-note" placeholder="Contoh: Kebocoran masih ada..."
       class="w-full min-h-[100px] px-md py-sm bg-surface rounded-lg border border-outline-variant focus:ring-primary focus:border-primary font-body-md text-body-md outline-none"></textarea>
 
-    <div class="my-lg border-t border-dashed border-outline-variant"></div>
+    <div class="my-md md:my-lg border-t border-dashed border-outline-variant"></div>
 
-    <div class="font-label-md text-label-md text-outline uppercase tracking-wider mb-sm">Bukti Foto Kendala</div>
-    <input type="file" id="reopen-photo-input" accept="image/*" multiple class="w-full px-md py-sm border border-dashed border-outline-variant rounded-lg font-body-md text-body-md text-on-surface-variant">
-    <div class="grid grid-cols-4 sm:grid-cols-5 gap-sm mt-md" id="reopen-photo-preview"></div>
+    <div class="font-label-md text-[10px] md:text-label-md text-outline uppercase tracking-wider mb-sm">Bukti Foto Kendala</div>
+    <input type="file" id="reopen-photo-input" accept="image/*" multiple class="w-full px-sm md:px-md py-sm border border-dashed border-outline-variant rounded-lg font-body-md text-[12px] md:text-body-md text-on-surface-variant">
+    <div class="grid grid-cols-3 sm:grid-cols-5 gap-sm mt-md" id="reopen-photo-preview"></div>
 
-    <div class="mt-lg pt-md border-t border-dashed border-outline-variant flex gap-sm" id="form-action-footer">
-      <button class="flex-1 px-md py-sm rounded-lg border border-outline-variant text-on-surface-variant font-body-md text-body-md font-semibold hover:bg-surface-container transition-all" type="button" onclick="closeFormModal()">Batal</button>
-      <button class="flex-1 px-md py-sm rounded-lg bg-error text-on-error font-body-md text-body-md font-semibold hover:opacity-90 transition-opacity" type="button" id="btn-submit-reopen">Kirim & Kembalikan ke On Progress</button>
+    <div class="mt-md md:mt-lg pt-md border-t border-dashed border-outline-variant flex flex-col sm:flex-row gap-sm" id="form-action-footer">
+      <button class="w-full sm:flex-1 px-md py-sm rounded-lg border border-outline-variant text-on-surface-variant font-body-md text-body-md font-semibold hover:bg-surface-container transition-all" type="button" onclick="closeFormModal()">Batal</button>
+      <button class="w-full sm:flex-1 px-md py-sm rounded-lg bg-error text-on-error font-body-md text-body-md font-semibold hover:opacity-90 transition-opacity" type="button" id="btn-submit-reopen">Kembalikan ke On Progress</button>
     </div>
-    <div id="form-action-msg" class="text-center mt-sm font-label-md text-label-md text-outline"></div>
+    <div id="form-action-msg" class="text-center mt-sm font-label-md text-[10px] md:text-label-md text-outline"></div>
   `;
 
   document.getElementById("reopen-photo-input").addEventListener("change", (e) => {
