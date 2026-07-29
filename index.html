@@ -675,6 +675,16 @@
         <span style="font-size:13px; color:var(--text-muted);">s/d</span>
         <input type="date" id="filter-date-2">
       </div>
+
+      <select id="filter-bagian" style="display:none;">
+        <option value="">Semua Bagian</option>
+        <option value="utility">Utility</option>
+        <option value="produksi">Produksi</option>
+        <option value="laboratorium">Laboratorium</option>
+        <option value="SCM">SCM</option>
+        <option value="SDM dan Sistem">SDM dan Sistem</option>
+        <option value="CORSEC">CORSEC</option>
+      </select>
       
       <button id="btn-apply-filter">Terapkan Filter</button>
       <button id="btn-export-pdf" type="button" style="background:var(--accent-blue);">Export PDF</button>
@@ -718,10 +728,6 @@
 // ============================================================================
 // KONFIGURASI URL
 // ============================================================================
-// PERHATIAN: Masukkan link hasil DEPLOY APPS SCRIPT (Web App) ke sini.
-// URL ini sekarang dipakai untuk 3 hal: login, action (approve/reject/dst),
-// dan pengambilan data (doGet) -- data diambil LANGSUNG dari Spreadsheet,
-// bukan lagi lewat link "Publish to web" CSV yang punya jeda cache dari Google.
 const LOGIN_API_URL = "https://script.google.com/macros/s/AKfycbyLSH0_M2CcJ2hTw-LmxN8yQuPxv6CSzXCU52St25o9ETYgWuEiLz6_7TOwMG5UgBHE/exec";
 
 // ============================================================================
@@ -730,17 +736,14 @@ const LOGIN_API_URL = "https://script.google.com/macros/s/AKfycbyLSH0_M2CcJ2hTw-
 let activeCategory = "master"; 
 let activeStatus = "pending"; 
 
-// Data untuk dirender: Array berisi objek { rowData: [], category: "", status: "", labelStatus: "" }
 let currentDataObjects = [];
 let globalHeaders = [];
 
-// Variabel untuk interaksi modal
 let targetRequestId = ""; 
 let targetItemCategory = ""; 
 let targetItemStatus = "";
-let targetCurrentBiaya = ""; // Menyimpan teks biaya tiket yang sedang dibuka, dipakai untuk fitur edit bebas biaya (Finished)
+let targetCurrentBiaya = "";
 
-// Menyimpan hasil filter yang sedang tampil, dipakai untuk Export PDF
 let lastExportRows = [];
 let lastExportTitle = "";
 
@@ -748,6 +751,7 @@ const mainBtns = document.querySelectorAll(".btn-main");
 const subBtns = document.querySelectorAll(".btn-sub");
 const subMenuContainer = document.getElementById("sub-menu-container");
 const panel = document.getElementById("panel");
+const filterBagianSelect = document.getElementById("filter-bagian");
 
 mainBtns.forEach(btn => {
   btn.addEventListener("click", () => {
@@ -793,6 +797,11 @@ filterType.addEventListener("change", () => {
     date2Cont.style.display = "flex";
   }
 });
+
+// Filter bagian (khusus Engineering) memfilter LANGSUNG di server, jadi
+// begitu berganti pilihan kita panggil ulang fetchData(), bukan cuma
+// render ulang data yang sudah ada di memori.
+filterBagianSelect.addEventListener("change", () => { fetchData(); });
 
 btnApplyFilter.addEventListener("click", () => { renderData(); });
 
@@ -885,9 +894,23 @@ async function fetchData() {
   currentDataObjects = [];
   globalHeaders = [];
 
+  // role & bagian dikirim ke server supaya server yang memfilter data --
+  // isolasi antar user WAJIB terjadi di backend, bukan cuma disembunyikan
+  // di tampilan.
+  const userRole = sessionStorage.getItem("userRole") || "";
+  const userBagian = sessionStorage.getItem("userBagian") || "";
+  const filterBagianVal = userRole === "engineering" ? (filterBagianSelect.value || "") : "";
+
   try {
     if (activeCategory === "master") {
-      const res = await fetch(`${LOGIN_API_URL}?mode=master&_=${Date.now()}`);
+      const params = new URLSearchParams({
+        mode: "master",
+        role: userRole,
+        bagian: userBagian,
+        filterBagian: filterBagianVal,
+        _: Date.now()
+      });
+      const res = await fetch(`${LOGIN_API_URL}?${params.toString()}`);
       if (!res.ok) throw new Error("Gagal mengambil data master (status " + res.status + ")");
       const result = await res.json();
       if (!result.success) throw new Error(result.message || "Gagal memuat data master");
@@ -905,6 +928,9 @@ async function fetchData() {
         mode: "single",
         category: activeCategory,
         status: activeStatus,
+        role: userRole,
+        bagian: userBagian,
+        filterBagian: filterBagianVal,
         _: Date.now()
       });
       const res = await fetch(`${LOGIN_API_URL}?${params.toString()}`);
@@ -945,7 +971,6 @@ function renderData() {
   let filteredItems = [];
   let exportRows = [];
 
-  // Label status yang lagi aktif (dipakai kalau bukan Master WO)
   const activeStatusLabelMap = {
     pending: "PENDING APPROVAL",
     approved: "ON PROGRESS",
@@ -959,7 +984,6 @@ function renderData() {
     const r = itemObj.rowData;
     let include = true;
 
-    // Filter Waktu
     if (cols.dateIdx !== -1 && filterVal !== "all") {
       const rowDateIso = parseCSVDateToISO(r[cols.dateIdx]);
       if (filterVal === "single" && d1) {
@@ -978,7 +1002,6 @@ function renderData() {
       
       let topStr = req && name ? `<strong>${escapeHtml(req)}</strong> &mdash; ${escapeHtml(name)}` : escapeHtml(req || name);
       
-      // Jika di Master WO, tambahkan Badge Identitas
       let badgeHtml = "";
       if (activeCategory === "master") {
         badgeHtml = `
@@ -1046,13 +1069,10 @@ function showModal(originalIndex, reqId, itemCat, itemStat) {
   const itemObj = currentDataObjects[originalIndex];
   const rowData = itemObj.rowData;
   
-  // Set variabel global untuk digunakan oleh eksekutor action
   targetRequestId = reqId; 
   targetItemCategory = itemCat;
   targetItemStatus = itemStat;
 
-  // Cari kolom biaya pada data tiket ini, dipakai untuk fitur edit bebas
-  // biaya khusus tiket Finished (role Engineering).
   const biayaColIdx = globalHeaders.findIndex(h => h && h.toLowerCase().includes("biaya"));
   targetCurrentBiaya = biayaColIdx !== -1 ? (rowData[biayaColIdx] || "") : "";
 
@@ -1068,10 +1088,6 @@ function showModal(originalIndex, reqId, itemCat, itemStat) {
 
   const userRole = sessionStorage.getItem("userRole");
   
-  // LOGIKA TOMBOL AKSI BERDASARKAN STATUS TIKET AKTUAL DAN ROLE USER
-  // (Berlaku sama baik dilihat dari tab Master WO maupun dari tab departemen
-  // Mechanical/Electrical/Modification, karena itemCat & itemStat selalu
-  // mengikuti data tiket itu sendiri, bukan tab yang sedang aktif.)
   if (userRole === "engineering" && targetItemStatus === "pending") {
     html += `
       <div class="action-footer" id="action-footer">
@@ -1099,9 +1115,6 @@ function showModal(originalIndex, reqId, itemCat, itemStat) {
     `;
   }
   else if (userRole === "engineering" && targetItemStatus === "finished") {
-    // Fitur pembukuan: Engineering bisa memodifikasi rincian biaya tiket yang
-    // sudah Finished secara bebas (edit/tambah/hapus baris lama), tanpa
-    // sistem menghitung ulang total secara otomatis.
     html += `
       <div class="action-footer" id="action-footer">
         <button class="btn-action btn-approve" style="background:var(--accent-blue);" onclick="openEditBiayaForm()">Edit Rincian Biaya</button>
@@ -1127,27 +1140,17 @@ async function executeAction(actionType, extra) {
       return;
     }
   } else if (actionType === "pending_finished") {
-    // Dirakit oleh openPendingFinishedForm() -> submitPendingFinishedForm().
-    // Rincian biaya BERSIFAT OPSIONAL di tahap ini -- operator/engineering di
-    // lapangan mungkin belum tahu detail harga barang saat WO baru selesai
-    // dikerjakan. Biaya bisa dilengkapi/diperbaiki nanti setelah tiket
-    // berstatus Finished lewat fitur "Edit Rincian Biaya".
     biayaWo = extra.biayaWo || "";
   } else if (actionType === "finished") {
     if (!confirm(`Anda yakin mengkonfirmasi bahwa tiket ini benar-benar selesai?`)) return;
   } else if (actionType === "approved") {
     if (!confirm(`Anda yakin ingin menerima (Approve) tiket ini?`)) return;
   } else if (actionType === "reopen") {
-    // Sudah dirakit oleh openReopenForm() -> submitReopenForm()
     rejectReason = extra.rejectReason || "";
   } else if (actionType === "update_biaya_finished") {
-    // Sudah dikonfirmasi & dirakit oleh openEditBiayaForm() -> submitEditBiayaForm()
     biayaWo = extra.biayaWo || "";
   }
 
-  // Tentukan konteks tombol/pesan: form aksi (biaya/reopen/edit biaya) pakai
-  // elemen sendiri, aksi lain (approve/reject/finish) pakai footer di modal
-  // detail seperti biasa.
   const usingFormModal = (actionType === "pending_finished" || actionType === "reopen" || actionType === "update_biaya_finished");
   const btnFooter = document.getElementById(usingFormModal ? "form-action-footer" : "action-footer");
   const msgBox = document.getElementById(usingFormModal ? "form-action-msg" : "action-msg");
@@ -1168,12 +1171,13 @@ async function executeAction(actionType, extra) {
       body: JSON.stringify({ 
         type: "action", 
         action: actionType, 
-        category: targetItemCategory, // Menggunakan kategori milik tiket tersebut
+        category: targetItemCategory,
         requestId: targetRequestId,
         rejectReason: rejectReason, 
         biayaWo: biayaWo,
-        photos: photos, // [{ data, mimeType, name }]
-        role: sessionStorage.getItem("userRole") || "" // dipakai backend untuk verifikasi aksi khusus role tertentu
+        photos: photos,
+        role: sessionStorage.getItem("userRole") || "",
+        bagian: sessionStorage.getItem("userBagian") || ""
       })
     });
     
@@ -1213,8 +1217,8 @@ const formModalBody = document.getElementById("form-modal-body");
 const formModalTitle = document.getElementById("form-modal-title");
 const btnCloseFormModal = document.getElementById("form-modal-close");
 
-let biayaRows = []; // [{ desc: "", harga: "" }]
-let selectedPhotos = []; // [{ data, mimeType, name, previewUrl }]
+let biayaRows = [];
+let selectedPhotos = [];
 
 function closeFormModal() {
   formModalOverlay.style.display = "none";
@@ -1230,7 +1234,6 @@ function formatRupiah(num) {
   return "Rp " + n.toLocaleString('id-ID');
 }
 
-// Kompres & ubah foto jadi base64 supaya tidak terlalu berat saat diupload
 function resizeImageToBase64(file, maxWidth = 1280, quality = 0.75) {
   return new Promise((resolve, reject) => {
     if (!file.type.startsWith("image/")) { reject(new Error("Bukan file gambar")); return; }
@@ -1273,7 +1276,7 @@ async function handlePhotoInputChange(fileInputEl, previewContainerId) {
       alert(`Gagal memproses foto "${file.name}": ${err.message}`);
     }
   }
-  fileInputEl.value = ""; // reset supaya bisa pilih file yang sama lagi kalau perlu
+  fileInputEl.value = "";
   renderPhotoPreviews(previewContainerId);
 }
 
@@ -1293,7 +1296,6 @@ function removeSelectedPhoto(idx, containerId) {
   renderPhotoPreviews(containerId);
 }
 
-// --- Form: Selesaikan WO (approved -> pending_finished) ---
 function openPendingFinishedForm() {
   biayaRows = [{ desc: "", harga: "" }];
   selectedPhotos = [];
@@ -1372,9 +1374,6 @@ function renderBiayaRows() {
 }
 
 function submitPendingFinishedForm() {
-  // Rincian biaya bersifat OPSIONAL: operator boleh mengirim WO ke Pending
-  // Finished walau belum tahu detail harga barang. Biaya bisa dilengkapi
-  // belakangan oleh Engineering setelah tiket berstatus Finished.
   const validRows = biayaRows.filter(r => r.desc.trim() !== "" && Number(r.harga) > 0);
 
   let biayaText = "";
@@ -1393,7 +1392,6 @@ function submitPendingFinishedForm() {
   executeAction("pending_finished", { biayaWo: biayaText, photos: selectedPhotos });
 }
 
-// --- Form: Edit Rincian Biaya bebas (khusus tiket Finished, role Engineering) ---
 function openEditBiayaForm() {
   formModalTitle.textContent = "Edit Rincian Biaya (Finished)";
   renderEditBiayaForm();
@@ -1427,7 +1425,6 @@ function submitEditBiayaForm() {
   executeAction("update_biaya_finished", { biayaWo: newText });
 }
 
-// --- Form: Belum Sesuai / Kembalikan (pending_finished -> approved) ---
 function openReopenForm() {
   selectedPhotos = [];
   formModalTitle.textContent = "Kembalikan ke On Progress — Catatan & Bukti Foto";
@@ -1485,10 +1482,19 @@ const loginMsg = document.getElementById("login-msg");
 const loginSubmit = document.getElementById("login-submit");
 const roleBadge = document.getElementById("user-role-badge");
 
+function applyRoleUI(role) {
+  // Filter Bagian hanya relevan & hanya boleh dipakai oleh Engineering,
+  // karena role user lain sudah otomatis terkunci ke bagiannya sendiri.
+  filterBagianSelect.style.display = (role === "engineering") ? "inline-block" : "none";
+}
+
 if (sessionStorage.getItem("loggedIn") === "true") {
   loginScreen.style.display = "none";
   appContent.style.display = "block";
-  roleBadge.textContent = "Akses: " + (sessionStorage.getItem("userRole") || "USER").toUpperCase();
+  const savedRole = sessionStorage.getItem("userRole") || "USER";
+  const savedBagian = sessionStorage.getItem("userBagian") || "";
+  roleBadge.textContent = "Akses: " + savedRole.toUpperCase() + (savedBagian ? " — " + savedBagian.toUpperCase() : "");
+  applyRoleUI(savedRole);
   fetchData(); 
 }
 
@@ -1512,9 +1518,11 @@ loginForm.addEventListener("submit", async (e) => {
     if (result.success) {
       sessionStorage.setItem("loggedIn", "true");
       sessionStorage.setItem("userRole", result.role || "user");
+      sessionStorage.setItem("userBagian", result.bagian || "");
       loginScreen.style.display = "none";
       appContent.style.display = "block";
-      roleBadge.textContent = "Akses: " + (result.role || "user").toUpperCase();
+      roleBadge.textContent = "Akses: " + (result.role || "user").toUpperCase() + (result.bagian ? " — " + result.bagian.toUpperCase() : "");
+      applyRoleUI(result.role || "user");
       fetchData(); 
     } else {
       loginMsg.textContent = result.message || "ID atau password salah.";
@@ -1530,6 +1538,7 @@ loginForm.addEventListener("submit", async (e) => {
 document.getElementById("logout-btn").addEventListener("click", () => {
   sessionStorage.removeItem("loggedIn");
   sessionStorage.removeItem("userRole");
+  sessionStorage.removeItem("userBagian");
   loginForm.reset();
   appContent.style.display = "none";
   loginScreen.style.display = "flex";
