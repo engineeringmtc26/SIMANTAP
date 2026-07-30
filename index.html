@@ -190,6 +190,12 @@
       <button class="btn-main flex-1 md:flex-none px-sm md:px-lg py-sm rounded-lg font-body-md text-[13px] md:text-body-md font-semibold transition-all" data-category="mechanical">Mechanical</button>
       <button class="btn-main flex-1 md:flex-none px-sm md:px-lg py-sm rounded-lg font-body-md text-[13px] md:text-body-md font-semibold transition-all" data-category="electrical">Electrical</button>
       <button class="btn-main flex-1 md:flex-none px-sm md:px-lg py-sm rounded-lg font-body-md text-[13px] md:text-body-md font-semibold transition-all" data-category="modification">Modification</button>
+      <button id="menu-maintenance-dashboard" class="btn-main maintenance-only-menu hidden flex-1 md:flex-none px-sm md:px-lg py-sm rounded-lg font-body-md text-[13px] md:text-body-md font-semibold transition-all" data-category="dashboard">
+        Dashboard
+      </button>
+      <button id="menu-equipment-history" class="btn-main maintenance-only-menu hidden flex-1 md:flex-none px-sm md:px-lg py-sm rounded-lg font-body-md text-[13px] md:text-body-md font-semibold transition-all" data-category="equipment_history">
+        Equipment History
+      </button>
     </div>
 
     <!-- Sub Menu (status) -->
@@ -201,6 +207,7 @@
       <button class="btn-sub px-md md:px-lg py-sm rounded-full font-body-md text-[13px] md:text-body-md font-semibold transition-all" data-status="rejected">Rejected</button>
     </div>
 
+    <div id="wo-data-view">
     <!-- Filter & Action Bar -->
     <div class="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-md bg-surface-container-lowest p-md rounded-xl custom-shadow border border-outline-variant/30 mb-gutter">
       <div class="flex flex-col sm:flex-row flex-wrap items-stretch sm:items-center gap-sm md:gap-md w-full md:w-auto">
@@ -271,6 +278,100 @@
       </div>
 
     </div>
+    </div>
+
+    <!-- DASHBOARD KHUSUS MAINTENANCE -->
+    <section id="maintenance-dashboard-view" class="hidden space-y-lg">
+      <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-md bg-surface-container-lowest p-md rounded-xl custom-shadow border border-outline-variant/30">
+        <div>
+          <h2 class="font-headline-md text-headline-md text-on-background">Dashboard Maintenance</h2>
+          <p class="font-body-md text-body-md text-on-surface-variant mt-xs">Ringkasan Work Order berdasarkan waktu tiket.</p>
+        </div>
+        <div class="flex flex-col sm:flex-row flex-wrap gap-sm items-stretch sm:items-center">
+          <select id="dashboard-filter-type" class="px-md py-sm bg-surface rounded-lg border border-outline-variant font-body-md text-body-md outline-none">
+            <option value="all">Semua Waktu</option>
+            <option value="single">Tanggal Tertentu</option>
+            <option value="range">Rentang Tanggal</option>
+          </select>
+          <div id="dashboard-date-1-container" class="hidden">
+            <input type="date" id="dashboard-date-1" class="w-full px-md py-sm bg-surface rounded-lg border border-outline-variant font-body-md text-body-md outline-none">
+          </div>
+          <div id="dashboard-date-2-container" class="hidden">
+            <input type="date" id="dashboard-date-2" class="w-full px-md py-sm bg-surface rounded-lg border border-outline-variant font-body-md text-body-md outline-none">
+          </div>
+          <button id="dashboard-apply-filter" class="px-lg py-sm bg-primary text-white rounded-lg font-body-md text-body-md font-semibold flex items-center justify-center gap-xs">
+            <span class="material-symbols-outlined text-[18px]">filter_list</span>Terapkan
+          </button>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-md">
+        <div class="bg-white rounded-xl custom-shadow border border-outline-variant/30 p-lg">
+          <div class="flex items-center justify-between">
+            <span class="font-label-md text-label-md uppercase text-outline">Total WO</span>
+            <span class="material-symbols-outlined text-primary">assignment</span>
+          </div>
+          <div id="dashboard-total-wo" class="mt-md text-[36px] font-bold text-on-background">0</div>
+        </div>
+        <div class="bg-white rounded-xl custom-shadow border border-outline-variant/30 p-lg">
+          <div class="flex items-center justify-between">
+            <span class="font-label-md text-label-md uppercase text-outline">Total Biaya</span>
+            <span class="material-symbols-outlined text-secondary">payments</span>
+          </div>
+          <div id="dashboard-total-biaya" class="mt-md text-[28px] font-bold text-on-background break-words">Rp 0</div>
+        </div>
+        <div class="bg-white rounded-xl custom-shadow border border-outline-variant/30 p-lg">
+          <div class="flex items-center justify-between">
+            <span class="font-label-md text-label-md uppercase text-outline">Total Downtime</span>
+            <span class="material-symbols-outlined text-error">schedule</span>
+          </div>
+          <div id="dashboard-total-downtime" class="mt-md text-[24px] font-bold text-on-background break-words">0 jam 0 menit 0 detik</div>
+        </div>
+      </div>
+
+      <div id="dashboard-loading" class="hidden text-center py-lg text-outline">Memuat dashboard...</div>
+      <div id="dashboard-error" class="hidden text-center py-md text-error"></div>
+      <div class="grid grid-cols-1 xl:grid-cols-2 gap-md">
+        <div class="bg-white rounded-xl custom-shadow border border-outline-variant/30 p-md md:p-lg">
+          <h3 class="font-headline-sm text-headline-sm mb-md">WO Finished vs On Progress</h3>
+          <div class="h-[300px]"><canvas id="chart-status-wo"></canvas></div>
+        </div>
+        <div class="bg-white rounded-xl custom-shadow border border-outline-variant/30 p-md md:p-lg">
+          <h3 class="font-headline-sm text-headline-sm mb-md">Electrical vs Mechanical</h3>
+          <div class="h-[300px]"><canvas id="chart-category-wo"></canvas></div>
+        </div>
+        <div class="bg-white rounded-xl custom-shadow border border-outline-variant/30 p-md md:p-lg xl:col-span-2">
+          <h3 class="font-headline-sm text-headline-sm mb-md">10 Biaya Perbaikan Terbanyak</h3>
+          <div class="h-[420px]"><canvas id="chart-top-costs"></canvas></div>
+        </div>
+      </div>
+      <p id="dashboard-generated-at" class="text-right font-label-md text-label-md text-outline"></p>
+    </section>
+
+    <!-- EQUIPMENT HISTORY KHUSUS MAINTENANCE -->
+    <section id="equipment-history-view" class="hidden space-y-md">
+      <div class="flex flex-col md:flex-row md:items-center justify-between gap-md bg-surface-container-lowest p-md rounded-xl custom-shadow border border-outline-variant/30">
+        <div>
+          <h2 class="font-headline-md text-headline-md text-on-background">Equipment History</h2>
+          <p class="font-body-md text-body-md text-on-surface-variant mt-xs">Riwayat WO Finished yang tersinkron otomatis dari Master WO.</p>
+        </div>
+        <div class="flex flex-col sm:flex-row gap-sm">
+          <input id="equipment-history-search" type="search" placeholder="Cari Tag Number / Nomor WO / Deskripsi" class="min-w-[280px] px-md py-sm bg-surface rounded-lg border border-outline-variant font-body-md text-body-md outline-none">
+          <button id="equipment-history-refresh" class="px-lg py-sm bg-primary text-white rounded-lg font-body-md text-body-md font-semibold flex items-center justify-center gap-xs">
+            <span class="material-symbols-outlined text-[18px]">sync</span>Sinkronkan
+          </button>
+        </div>
+      </div>
+      <div id="equipment-history-status" class="font-body-md text-body-md text-outline"></div>
+      <div class="bg-white rounded-xl custom-shadow border border-outline-variant/30 overflow-hidden">
+        <div class="overflow-x-auto">
+          <table class="min-w-[1200px] w-full text-left">
+            <thead id="equipment-history-head" class="bg-[#5B3F92] text-white"></thead>
+            <tbody id="equipment-history-body" class="divide-y divide-outline-variant/30"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
   </main>
 </div>
 
@@ -302,6 +403,7 @@
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
 
 <style>
   /* Segmented main-menu / sub-menu state styling */
@@ -362,19 +464,36 @@ const panelTitleEl = document.getElementById("panel-title");
 const summaryCountEl = document.getElementById("summary-count");
 const summaryLabelEl = document.getElementById("summary-label");
 const filterBagianSelect = document.getElementById("filter-bagian");
+const woDataView = document.getElementById("wo-data-view");
+const maintenanceDashboardView = document.getElementById("maintenance-dashboard-view");
+const equipmentHistoryView = document.getElementById("equipment-history-view");
+let dashboardCharts = { status: null, category: null, topCosts: null };
+let equipmentHistoryHeaders = [];
+let equipmentHistoryRows = [];
+
+function showApplicationView(viewName) {
+  const isDashboard = viewName === "dashboard";
+  const isEquipment = viewName === "equipment_history";
+  woDataView.classList.toggle("hidden", isDashboard || isEquipment);
+  maintenanceDashboardView.classList.toggle("hidden", !isDashboard);
+  equipmentHistoryView.classList.toggle("hidden", !isEquipment);
+  subMenuContainer.style.display = (!isDashboard && !isEquipment && viewName !== "master") ? "flex" : "none";
+}
 
 mainBtns.forEach(btn => {
   btn.addEventListener("click", () => {
-    activeCategory = btn.getAttribute("data-category");
+    const requestedView = btn.getAttribute("data-category");
+    const role = (sessionStorage.getItem("userRole") || "").toLowerCase();
+    if ((requestedView === "dashboard" || requestedView === "equipment_history") && role !== "maintenance") return;
+
+    activeCategory = requestedView;
     mainBtns.forEach(b => b.classList.remove("active"));
     btn.classList.add("active");
+    showApplicationView(activeCategory);
 
-    if (activeCategory === "master") {
-      subMenuContainer.style.display = "none";
-    } else {
-      subMenuContainer.style.display = "flex";
-    }
-    fetchData();
+    if (activeCategory === "dashboard") fetchDashboardData();
+    else if (activeCategory === "equipment_history") fetchEquipmentHistory();
+    else fetchData();
   });
 });
 
@@ -2196,6 +2315,160 @@ function submitReopenForm() {
 btnCloseModal.addEventListener("click", () => { modalOverlay.style.display = "none"; });
 modalOverlay.addEventListener("click", (e) => { if (e.target === modalOverlay) modalOverlay.style.display = "none"; });
 
+
+// ============================================================================
+// DASHBOARD KHUSUS MAINTENANCE
+// ============================================================================
+const dashboardFilterType = document.getElementById("dashboard-filter-type");
+const dashboardDate1Container = document.getElementById("dashboard-date-1-container");
+const dashboardDate2Container = document.getElementById("dashboard-date-2-container");
+const dashboardDate1 = document.getElementById("dashboard-date-1");
+const dashboardDate2 = document.getElementById("dashboard-date-2");
+
+dashboardFilterType.addEventListener("change", () => {
+  const value = dashboardFilterType.value;
+  dashboardDate1Container.classList.toggle("hidden", value === "all");
+  dashboardDate2Container.classList.toggle("hidden", value !== "range");
+});
+document.getElementById("dashboard-apply-filter").addEventListener("click", fetchDashboardData);
+
+function destroyDashboardCharts() {
+  Object.keys(dashboardCharts).forEach(key => {
+    if (dashboardCharts[key]) {
+      dashboardCharts[key].destroy();
+      dashboardCharts[key] = null;
+    }
+  });
+}
+
+function rupiahForChart(value) {
+  return new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", maximumFractionDigits: 0 }).format(Number(value) || 0);
+}
+
+async function fetchDashboardData() {
+  if ((sessionStorage.getItem("userRole") || "").toLowerCase() !== "maintenance") return;
+  if (dashboardFilterType.value !== "all" && !dashboardDate1.value) {
+    alert("Pilih tanggal terlebih dahulu.");
+    return;
+  }
+  if (dashboardFilterType.value === "range" && !dashboardDate2.value) {
+    alert("Pilih tanggal akhir rentang.");
+    return;
+  }
+  const loading = document.getElementById("dashboard-loading");
+  const errorEl = document.getElementById("dashboard-error");
+  loading.classList.remove("hidden");
+  errorEl.classList.add("hidden");
+
+  try {
+    const params = new URLSearchParams({
+      mode: "dashboard",
+      role: "maintenance",
+      filterType: dashboardFilterType.value,
+      date1: dashboardDate1.value || "",
+      date2: dashboardDate2.value || "",
+      _: Date.now()
+    });
+    const response = await fetch(`${LOGIN_API_URL}?${params.toString()}`);
+    const result = await response.json();
+    if (!result.success) throw new Error(result.message || "Gagal memuat dashboard.");
+
+    document.getElementById("dashboard-total-wo").textContent = result.summary?.totalWo ?? 0;
+    document.getElementById("dashboard-total-biaya").textContent = result.summary?.totalBiayaFormatted || "Rp 0";
+    document.getElementById("dashboard-total-downtime").textContent = result.summary?.totalDowntimeFormatted || "0 jam 0 menit 0 detik";
+    document.getElementById("dashboard-generated-at").textContent = result.generatedAt
+      ? `Terakhir diperbarui: ${result.generatedAt}` : "";
+
+    destroyDashboardCharts();
+    const commonOptions = { responsive: true, maintainAspectRatio: false };
+    dashboardCharts.status = new Chart(document.getElementById("chart-status-wo"), {
+      type: "doughnut",
+      data: {
+        labels: result.charts.status.labels,
+        datasets: [{ data: result.charts.status.values, backgroundColor: ["#006c49", "#2563eb"], borderWidth: 0 }]
+      },
+      options: { ...commonOptions, plugins: { legend: { position: "bottom" } } }
+    });
+    dashboardCharts.category = new Chart(document.getElementById("chart-category-wo"), {
+      type: "bar",
+      data: {
+        labels: result.charts.category.labels,
+        datasets: [{ label: "Jumlah WO", data: result.charts.category.values, backgroundColor: ["#2563eb", "#f59e0b"], borderRadius: 8 }]
+      },
+      options: { ...commonOptions, scales: { y: { beginAtZero: true, ticks: { precision: 0 } } }, plugins: { legend: { display: false } } }
+    });
+    const topCosts = result.charts.topCosts || [];
+    dashboardCharts.topCosts = new Chart(document.getElementById("chart-top-costs"), {
+      type: "bar",
+      data: {
+        labels: topCosts.map(item => item.label),
+        datasets: [{ label: "Total Biaya", data: topCosts.map(item => item.value), backgroundColor: "#5B3F92", borderRadius: 6 }]
+      },
+      options: {
+        ...commonOptions,
+        indexAxis: "y",
+        scales: { x: { beginAtZero: true, ticks: { callback: value => rupiahForChart(value) } } },
+        plugins: { legend: { display: false }, tooltip: { callbacks: { label: context => rupiahForChart(context.raw) } } }
+      }
+    });
+  } catch (error) {
+    errorEl.textContent = error.message;
+    errorEl.classList.remove("hidden");
+  } finally {
+    loading.classList.add("hidden");
+  }
+}
+
+// ============================================================================
+// EQUIPMENT HISTORY KHUSUS MAINTENANCE
+// ============================================================================
+function formatEquipmentHistoryValue(value, columnName) {
+  if (["Biaya Material", "Biaya Jasa", "Total Biaya"].includes(columnName)) {
+    if (value === "" || value === null || value === undefined) return "-";
+    return rupiahForChart(Number(String(value).replace(/[^0-9.-]/g, "")) || 0);
+  }
+  return value === "" || value === null || value === undefined ? "-" : value;
+}
+
+function renderEquipmentHistory() {
+  const query = document.getElementById("equipment-history-search").value.trim().toLowerCase();
+  const head = document.getElementById("equipment-history-head");
+  const body = document.getElementById("equipment-history-body");
+  head.innerHTML = `<tr>${equipmentHistoryHeaders.map(header => `<th class="px-md py-sm text-[12px] font-semibold whitespace-nowrap">${escapeHtml(header)}</th>`).join("")}</tr>`;
+
+  const visibleRows = equipmentHistoryRows.filter(row => !query || row.join(" ").toLowerCase().includes(query));
+  if (visibleRows.length === 0) {
+    body.innerHTML = `<tr><td colspan="${Math.max(equipmentHistoryHeaders.length, 1)}" class="px-md py-xl text-center text-outline">Belum ada data Equipment History.</td></tr>`;
+    return;
+  }
+  body.innerHTML = visibleRows.map(row => `
+    <tr class="hover:bg-surface-container-low/60">
+      ${equipmentHistoryHeaders.map((header, index) => `<td class="px-md py-sm text-[12px] align-top whitespace-pre-wrap">${escapeHtml(String(formatEquipmentHistoryValue(row[index], header)))}</td>`).join("")}
+    </tr>
+  `).join("");
+}
+
+async function fetchEquipmentHistory() {
+  if ((sessionStorage.getItem("userRole") || "").toLowerCase() !== "maintenance") return;
+  const statusEl = document.getElementById("equipment-history-status");
+  statusEl.textContent = "Menyinkronkan Equipment History dari Master WO...";
+  try {
+    const params = new URLSearchParams({ mode: "equipment_history", role: "maintenance", _: Date.now() });
+    const response = await fetch(`${LOGIN_API_URL}?${params.toString()}`);
+    const result = await response.json();
+    if (!result.success) throw new Error(result.message || "Gagal memuat Equipment History.");
+    equipmentHistoryHeaders = result.headers || [];
+    equipmentHistoryRows = result.rows || [];
+    renderEquipmentHistory();
+    statusEl.textContent = `${equipmentHistoryRows.length} riwayat ditemukan. Sinkron terakhir: ${result.syncSummary?.updatedAt || "-"}`;
+  } catch (error) {
+    statusEl.textContent = `Gagal: ${error.message}`;
+  }
+}
+
+document.getElementById("equipment-history-refresh").addEventListener("click", fetchEquipmentHistory);
+document.getElementById("equipment-history-search").addEventListener("input", renderEquipmentHistory);
+
 // ============================================================================
 // LOGIKA LOGIN & AUTENTIKASI
 // ============================================================================
@@ -2208,7 +2481,16 @@ const roleBadge = document.getElementById("user-role-badge");
 const roleBadgeText = document.getElementById("user-role-badge-text");
 
 function applyRoleUI(role) {
-  filterBagianSelect.style.display = (role === "maintenance") ? "inline-block" : "none";
+  const normalizedRole = (role || "").toLowerCase();
+  filterBagianSelect.style.display = normalizedRole === "maintenance" ? "inline-block" : "none";
+  document.querySelectorAll(".maintenance-only-menu").forEach(button => {
+    button.classList.toggle("hidden", normalizedRole !== "maintenance");
+  });
+  if (normalizedRole !== "maintenance" && (activeCategory === "dashboard" || activeCategory === "equipment_history")) {
+    activeCategory = "master";
+    mainBtns.forEach(button => button.classList.toggle("active", button.getAttribute("data-category") === "master"));
+    showApplicationView("master");
+  }
 }
 
 if (sessionStorage.getItem("loggedIn") === "true") {
@@ -2218,6 +2500,7 @@ if (sessionStorage.getItem("loggedIn") === "true") {
   const savedBagian = sessionStorage.getItem("userBagian") || "";
   roleBadgeText.textContent = "Akses: " + savedRole.toUpperCase() + (savedBagian ? " — " + savedBagian.toUpperCase() : "");
   applyRoleUI(savedRole);
+  showApplicationView(activeCategory);
   fetchData();
 }
 
@@ -2246,6 +2529,7 @@ loginForm.addEventListener("submit", async (e) => {
       appContent.style.display = "block";
       roleBadgeText.textContent = "Akses: " + (result.role || "user").toUpperCase() + (result.bagian ? " — " + result.bagian.toUpperCase() : "");
       applyRoleUI(result.role || "user");
+      showApplicationView(activeCategory);
       fetchData();
     } else {
       loginMsg.textContent = result.message || "ID atau password salah.";
@@ -2262,6 +2546,9 @@ document.getElementById("logout-btn").addEventListener("click", () => {
   sessionStorage.removeItem("loggedIn");
   sessionStorage.removeItem("userRole");
   sessionStorage.removeItem("userBagian");
+  activeCategory = "master";
+  mainBtns.forEach(button => button.classList.toggle("active", button.getAttribute("data-category") === "master"));
+  showApplicationView("master");
   loginForm.reset();
   appContent.style.display = "none";
   loginScreen.style.display = "flex";
