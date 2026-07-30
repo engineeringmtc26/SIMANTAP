@@ -343,9 +343,9 @@ let pdfFormConfig = {
   plantName: "PABRIK MINYAK GORENG",
   addressLine1: "Komp. KEK Sei Mangkei, Kav. 2-3, Kec. Bosar Maligas,",
   addressLine2: "Kab. Simalungun, Sumatera Utara, 21183",
-  documentNumber: "",
-  effectiveDate: "",
-  revisionNumber: "",
+  documentNumber: "FM-BOPS-10/05",
+  effectiveDate: "09-Sept-25",
+  revisionNumber: "01",
   logoUrl: "logo%20inl.png"
 };
 
@@ -835,19 +835,137 @@ function getLatestMtcFinishedDateForPdf() {
   return lines.length > 0 ? lines[lines.length - 1].replace(/^\d+[.)]\s*/, "").trim() : history.trim();
 }
 
+// Mengambil waktu close secara khusus. Riwayat "Tanggal MTC Selesai"
+// dikecualikan karena PDF final harus memakai waktu close oleh pengguna.
+function getCloseTimestampForPdf() {
+  const aliases = [
+    "waktu close", "tanggal close", "tanggal closed", "waktu closed",
+    "close time", "closed at", "closed date", "tanggal penutupan",
+    "waktu penutupan", "tanggal selesai", "waktu selesai"
+  ].map(normalizePdfKey);
+
+  for (let i = 0; i < globalHeaders.length; i++) {
+    const key = normalizePdfKey(globalHeaders[i]);
+    if (key.includes("mtc")) continue;
+    if (aliases.includes(key)) {
+      const value = targetRowData[i];
+      if (value !== null && value !== undefined && value.toString().trim() !== "") {
+        return value.toString().trim();
+      }
+    }
+  }
+
+  for (let i = 0; i < globalHeaders.length; i++) {
+    const key = normalizePdfKey(globalHeaders[i]);
+    if (key.includes("mtc")) continue;
+    if (key.includes("close") || key.includes("closed") || key.includes("penutupan")) {
+      const value = targetRowData[i];
+      if (value !== null && value !== undefined && value.toString().trim() !== "") {
+        return value.toString().trim();
+      }
+    }
+  }
+  return "";
+}
+
+function splitPdfDateTime(value) {
+  const raw = (value || "").toString().trim();
+  if (!raw) return { date: "", time: "", display: "" };
+
+  const dmy = raw.match(/(?:^|\b)(\d{1,2})[\/-](\d{1,2})[\/-](\d{2,4})(?:[ T]+(\d{1,2}):(\d{2})(?::(\d{2}))?)?/);
+  if (dmy) {
+    const day = dmy[1].padStart(2, "0");
+    const month = dmy[2].padStart(2, "0");
+    let year = dmy[3];
+    if (year.length === 2) year = `20${year}`;
+    const date = `${day}/${month}/${year}`;
+    const time = dmy[4]
+      ? `${dmy[4].padStart(2, "0")}:${dmy[5]}:${(dmy[6] || "00").padStart(2, "0")}`
+      : "";
+    return { date, time, display: time ? `${date}\n${time}` : date };
+  }
+
+  const iso = raw.match(/(\d{4})-(\d{2})-(\d{2})(?:[T ](\d{2}):(\d{2})(?::(\d{2}))?)?/);
+  if (iso) {
+    const date = `${iso[3]}/${iso[2]}/${iso[1]}`;
+    const time = iso[4] ? `${iso[4]}:${iso[5]}:${iso[6] || "00"}` : "";
+    return { date, time, display: time ? `${date}\n${time}` : date };
+  }
+
+  return { date: raw.split(/\s+/)[0] || raw, time: "", display: raw };
+}
+
+function parsePdfDateTime(value) {
+  const raw = (value || "").toString().trim();
+  if (!raw) return null;
+
+  const dmy = raw.match(/(?:^|\b)(\d{1,2})[\/-](\d{1,2})[\/-](\d{2,4})(?:[ T]+(\d{1,2}):(\d{2})(?::(\d{2}))?)?/);
+  if (dmy) {
+    let year = Number(dmy[3]);
+    if (year < 100) year += 2000;
+    const result = new Date(
+      year,
+      Number(dmy[2]) - 1,
+      Number(dmy[1]),
+      Number(dmy[4] || 0),
+      Number(dmy[5] || 0),
+      Number(dmy[6] || 0)
+    );
+    return Number.isNaN(result.getTime()) ? null : result;
+  }
+
+  const parsed = new Date(raw);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
+
+function formatPdfDuration(startValue, finishValue) {
+  const start = parsePdfDateTime(startValue);
+  const finish = parsePdfDateTime(finishValue);
+  if (!start || !finish) return "";
+
+  let seconds = Math.floor((finish.getTime() - start.getTime()) / 1000);
+  if (seconds < 0) return "";
+  const hours = Math.floor(seconds / 3600);
+  seconds %= 3600;
+  const minutes = Math.floor(seconds / 60);
+  const secs = seconds % 60;
+  return `${hours} jam ${minutes} menit ${secs} detik`;
+}
+
 function getPdfTicketData() {
   const category = (targetItemCategory || getPdfField(["kategori", "category"])).toLowerCase();
   const priority = getPdfField(["prioritas", "priority"]).toLowerCase();
   const biayaText = getPdfField(["rincian biaya", "biaya wo", "biaya", "material"]);
   const materialRows = parseBiayaText(biayaText).slice(0, 4);
 
+  const department = getPdfField(["bagian", "bagian pemohon", "department", "section", "departemen"]);
+  const requestDateRaw = getPdfField(["tanggal pengajuan", "tanggal request", "timestamp", "tanggal"]);
+  const approvedDateRaw = getPdfField([
+    "tanggal approved", "approved date", "tanggal persetujuan mtc",
+    "waktu diterima", "tanggal diterima", "received time"
+  ]);
+  const closeDateRaw = getCloseTimestampForPdf();
+  const personilMtcRaw = getPdfField([
+    "personil mtc", "personel mtc", "mtc personnel", "nama pekerja", "pekerja",
+    "labour", "worker names", "nama teknisi", "pelaksana", "teknisi"
+  ]);
+  const labourNames = parsePersonilMtcText(personilMtcRaw);
+
+  const requestParts = splitPdfDateTime(requestDateRaw);
+  const approvedParts = splitPdfDateTime(approvedDateRaw);
+  const closeParts = splitPdfDateTime(closeDateRaw);
+
   return {
-    department: getPdfField(["bagian", "bagian pemohon", "department", "section", "departemen"]),
+    department,
     category,
     woNumber: getPdfField(["nomor wo", "no wo", "work order number", "request id"], targetRequestId || ""),
-    requestDate: getPdfField(["tanggal pengajuan", "tanggal request", "timestamp", "tanggal"]),
-    equipmentNo: getPdfField(["no alat", "nomor alat", "equip no", "equipment no", "tag number"]),
-    equipmentName: getPdfField(["nama alat", "equip name", "equipment name", "nama equipment"]),
+    requestDate: requestDateRaw,
+    requestDateOnly: requestParts.date,
+    requestDisplay: requestParts.display,
+
+    // No. Alat mengambil Kode Bagian, Nama Alat mengambil Equipment.
+    equipmentNo: getPdfField(["kode bagian", "kode bagian alat", "kode departemen", "no alat", "nomor alat", "equip no", "equipment no"]),
+    equipmentName: getPdfField(["equipment", "nama equipment", "nama alat", "equip name", "equipment name"]),
     location: getPdfField(["lokasi", "function location", "functional location", "area"]),
     requestWork: getPdfField([
       "permintaan pekerjaan", "request work", "uraian pekerjaan", "deskripsi pekerjaan",
@@ -858,14 +976,24 @@ function getPdfTicketData() {
       "penyelesaian", "keterangan perbaikan", "pekerjaan yang dilakukan"
     ]),
     priority,
-    labour: getPdfField(["personil mtc", "personel mtc", "mtc personnel", "nama pekerja", "pekerja", "labour", "worker names", "nama teknisi", "pelaksana", "teknisi"]),
-    startTime: getPdfField(["jam mulai", "waktu mulai", "start", "tanggal mulai", "tanggal approved"]),
-    finishTime: getLatestMtcFinishedDateForPdf() || getPdfField(["jam selesai", "waktu selesai", "finish", "tanggal close", "tanggal selesai", "tanggal closed"]),
+
+    // Judul PDF "Pekerja", sumber data tetap kolom Personil MTC.
+    labour: labourNames.length > 0 ? labourNames.map(name => `- ${name}`).join("\n") : personilMtcRaw,
+    labourNames,
+
+    startTime: approvedDateRaw,
+    startDisplay: approvedParts.display,
+    finishTime: closeDateRaw,
+    finishDisplay: closeParts.display,
+    closeDateOnly: closeParts.date,
+    closeTimeOnly: closeParts.time,
+    duration: formatPdfDuration(approvedDateRaw, closeDateRaw),
+
     userVerification: getPdfField(["user verifikasi", "verifikasi user", "user verification", "hasil verifikasi user"]),
-    requestedBy: getPdfField(["nama pemohon", "requested by", "nama", "user"]),
-    receivedBy: getPdfField(["diterima oleh", "received by", "maintenance penerima"]),
-    doneBy: getPdfField(["pekerjaan diselesaikan oleh", "job done by", "mtc in charge", "maintenance in charge", "teknisi"]),
-    acceptedBy: getPdfField(["pekerjaan diterima oleh", "job accepted by", "user in charge", "penerima hasil"]),
+    requestedBy: department,
+    receivedBy: "MTC",
+    doneBy: "MTC",
+    acceptedBy: department,
     totalBreakdown: biayaText,
     materialRows
   };
@@ -936,6 +1064,34 @@ function drawPdfCellText(doc, text, x, y, w, h, options = {}) {
     align: options.align || "left",
     lineHeightFactor: 1.08
   });
+}
+
+// Menggambar seluruh isi sel tanpa memangkas baris. Font diperkecil
+// bertahap agar semua nama Personil MTC tetap tercantum.
+function drawPdfFittedCellText(doc, text, x, y, w, h, options = {}) {
+  const padding = options.padding ?? 1.5;
+  const align = options.align || "left";
+  const fontStyle = options.fontStyle || "normal";
+  const minFontSize = options.minFontSize ?? 3.6;
+  const lineHeightFactor = options.lineHeightFactor ?? 1.05;
+  let fontSize = options.fontSize ?? 5.8;
+  let lines = [];
+
+  while (fontSize >= minFontSize) {
+    doc.setFont("helvetica", fontStyle);
+    doc.setFontSize(fontSize);
+    lines = doc.splitTextToSize((text || "-").toString(), w - padding * 2);
+    const heightNeeded = lines.length * fontSize * 0.38 * lineHeightFactor;
+    if (heightNeeded <= h - padding * 2) break;
+    fontSize -= 0.25;
+  }
+
+  fontSize = Math.max(fontSize, minFontSize);
+  doc.setFont("helvetica", fontStyle);
+  doc.setFontSize(fontSize);
+  const tx = align === "center" ? x + w / 2 : x + padding;
+  const ty = y + padding + fontSize * 0.36;
+  doc.text(lines, tx, ty, { align, lineHeightFactor });
 }
 
 function drawPdfLabelValue(doc, label, value, x, y, labelWidth, totalWidth) {
@@ -1030,8 +1186,8 @@ async function exportTicketToPDF() {
     const ry = y0 + idx * metaRowH;
     if (idx > 0) doc.line(metaX, ry, metaX + metaW, ry);
     doc.line(metaX + 31, ry, metaX + 31, ry + metaRowH);
-    drawPdfCellText(doc, row[0], metaX, ry, 31, metaRowH, { fontSize: 6.1, fontStyle: "bold" });
-    drawPdfCellText(doc, row[1], metaX + 31, ry, metaW - 31, metaRowH, { fontSize: 6.2 });
+    drawPdfCellText(doc, row[0], metaX, ry, 31, metaRowH, { fontSize: 6.1, fontStyle: "bold", align: "center" });
+    drawPdfCellText(doc, row[1], metaX + 31, ry, metaW - 31, metaRowH, { fontSize: 6.2, align: "center" });
   });
 
   // -------------------- INFO --------------------
@@ -1058,7 +1214,7 @@ async function exportTicketToPDF() {
   });
 
   drawPdfLabelValue(doc, "No. WO :", data.woNumber, x0 + 154, y + 5.2, 13, 43);
-  drawPdfLabelValue(doc, "Date :", data.requestDate, x0 + 154, y + 12.4, 13, 43);
+  drawPdfLabelValue(doc, "Date :", data.requestDateOnly, x0 + 154, y + 12.4, 13, 43);
 
   // -------------------- EQUIPMENT / ACCEPTANCE --------------------
   y += infoH;
@@ -1163,15 +1319,18 @@ async function exportTicketToPDF() {
     doc.rect(cx, ry, cCols[0] + cCols[1], cBodyH, "F");
     drawPdfCellText(doc, `${idx + 1}.`, cx, ry, cCols[0], cBodyH, { fontSize: 6.2, align: "center" });
     drawPdfCellText(doc, label, cx + cCols[0], ry, cCols[1], cBodyH, { fontSize: 5.7 });
-    drawPdfCellText(doc, "OK/TDK*  □", cx + cCols[0] + cCols[1], ry, cCols[2], cBodyH, { fontSize: 5.6, align: "center" });
-    drawPdfCellText(doc, "OK/TDK*  □", cx + cCols[0] + cCols[1] + cCols[2], ry, cCols[3], cBodyH, { fontSize: 5.6, align: "center" });
+    // Checklist bersifat statis: MTC dan User selalu tercentang.
+    drawPdfCheckbox(doc, cx + cCols[0] + cCols[1] + (cCols[2] - 3.2) / 2, ry + (cBodyH - 3.2) / 2, true);
+    drawPdfCheckbox(doc, cx + cCols[0] + cCols[1] + cCols[2] + (cCols[3] - 3.2) / 2, ry + (cBodyH - 3.2) / 2, true);
   });
 
   // -------------------- MATERIAL / LABOUR --------------------
   y += checklistH;
-  const materialH = 41;
   const materialHeaderH = 12;
-  const materialRowH = (materialH - materialHeaderH) / 4;
+  const labourLineCount = Math.max(1, (data.labourNames || []).length);
+  const materialBodyH = Math.max(29, Math.min(66, labourLineCount * 4.3 + 5));
+  const materialH = materialHeaderH + materialBodyH;
+  const materialRowH = materialBodyH / 4;
   const materialCols = [70, 20, 36, 34, 40];
   doc.rect(x0, y, formW, materialH);
   doc.setFillColor(...lightGray);
@@ -1185,30 +1344,43 @@ async function exportTicketToPDF() {
   });
   drawPdfCellText(doc, "Keterangan Material\nDescription Material", x0, y, materialCols[0], materialHeaderH, { fontSize: 6.2, fontStyle: "italic", align: "center" });
   drawPdfCellText(doc, "Jumlah\nQuantity", x0 + materialCols[0], y, materialCols[1], materialHeaderH, { fontSize: 6.2, fontStyle: "italic", align: "center" });
-  drawPdfCellText(doc, "Personil MTC\nLabour", x0 + materialCols[0] + materialCols[1], y, materialCols[2], materialHeaderH, { fontSize: 6.2, fontStyle: "italic", align: "center" });
+  drawPdfCellText(doc, "Pekerja\nLabour", x0 + materialCols[0] + materialCols[1], y, materialCols[2], materialHeaderH, { fontSize: 6.2, fontStyle: "italic", align: "center" });
 
-  const hourX = x0 + materialCols[0] + materialCols[1] + materialCols[2];
+  const labourX = x0 + materialCols[0] + materialCols[1];
+  const hourX = labourX + materialCols[2];
+  const remarksX = x0 + formW - materialCols[4];
   drawPdfCellText(doc, "Jam/Hour", hourX, y, materialCols[3], materialHeaderH / 2, { fontSize: 6.2, fontStyle: "italic", align: "center" });
   doc.line(hourX, y + materialHeaderH / 2, hourX + materialCols[3], y + materialHeaderH / 2);
   doc.line(hourX + materialCols[3] / 2, y + materialHeaderH / 2, hourX + materialCols[3] / 2, y + materialH);
   drawPdfCellText(doc, "Mulai\nStart", hourX, y + materialHeaderH / 2, materialCols[3] / 2, materialHeaderH / 2, { fontSize: 5.5, fontStyle: "italic", align: "center" });
   drawPdfCellText(doc, "Selesai\nFinish", hourX + materialCols[3] / 2, y + materialHeaderH / 2, materialCols[3] / 2, materialHeaderH / 2, { fontSize: 5.5, fontStyle: "italic", align: "center" });
-  drawPdfCellText(doc, "Remarks", x0 + formW - materialCols[4], y, materialCols[4], materialHeaderH, { fontSize: 6.2, fontStyle: "italic", align: "center" });
+  drawPdfCellText(doc, "Remarks", remarksX, y, materialCols[4], materialHeaderH, { fontSize: 6.2, fontStyle: "italic", align: "center" });
 
+  // Kolom Pekerja dan Jam digabung ke bawah agar seluruh Personil MTC muat.
   for (let i = 0; i < 4; i++) {
     const ry = y + materialHeaderH + i * materialRowH;
-    if (i > 0) doc.line(x0, ry, x0 + formW, ry);
+    if (i > 0) {
+      doc.line(x0, ry, labourX, ry);
+      doc.line(remarksX, ry, x0 + formW, ry);
+    }
     const row = data.materialRows[i];
     const desc = row?.desc || "";
     const qty = row?.qty || "";
-    const price = row ? formatRupiah(row.harga) : "";
     drawPdfCellText(doc, desc, x0, ry, materialCols[0], materialRowH, { fontSize: 5.8 });
     drawPdfCellText(doc, qty, x0 + materialCols[0], ry, materialCols[1], materialRowH, { fontSize: 5.8, align: "center" });
-    drawPdfCellText(doc, i === 0 ? data.labour : "", x0 + materialCols[0] + materialCols[1], ry, materialCols[2], materialRowH, { fontSize: 5.8, align: "center" });
-    drawPdfCellText(doc, i === 0 ? data.startTime : "", hourX, ry, materialCols[3] / 2, materialRowH, { fontSize: 5.2, align: "center" });
-    drawPdfCellText(doc, i === 0 ? data.finishTime : "", hourX + materialCols[3] / 2, ry, materialCols[3] / 2, materialRowH, { fontSize: 5.2, align: "center" });
-    drawPdfCellText(doc, price, x0 + formW - materialCols[4], ry, materialCols[4], materialRowH, { fontSize: 5.6, align: "center" });
+    // Isi Remarks selalu kosong.
+    drawPdfCellText(doc, "", remarksX, ry, materialCols[4], materialRowH, { fontSize: 5.6, align: "center" });
   }
+
+  const materialBodyY = y + materialHeaderH;
+  drawPdfFittedCellText(doc, data.labour || "-", labourX, materialBodyY, materialCols[2], materialBodyH, {
+    fontSize: 5.8,
+    minFontSize: 3.6,
+    align: "left",
+    padding: 1.6
+  });
+  drawPdfCellText(doc, data.startDisplay || "-", hourX, materialBodyY, materialCols[3] / 2, materialBodyH, { fontSize: 5.2, align: "center" });
+  drawPdfCellText(doc, data.finishDisplay || "-", hourX + materialCols[3] / 2, materialBodyY, materialCols[3] / 2, materialBodyH, { fontSize: 5.2, align: "center" });
 
   // -------------------- SIGNATURES --------------------
   y += materialH;
@@ -1232,14 +1404,14 @@ async function exportTicketToPDF() {
     drawPdfCellText(doc, item[2], sx, y + 25, sigW, 8, { fontSize: 6.1, align: "center" });
   });
 
-  drawPdfCellText(doc, `Waktu/Time :\n${data.requestDate || ""}`, x0, y + signatureTopH, sigW, signatureBottomH, { fontSize: 6.1 });
-  drawPdfCellText(doc, `Waktu/Time :\n${data.startTime || ""}`, x0 + sigW, y + signatureTopH, sigW, signatureBottomH, { fontSize: 6.1 });
-  drawPdfCellText(doc, `Selesai/Finish\nTanggal/Date : ${data.finishTime || ""}\nWaktu/Time :`, x0 + sigW * 2, y + signatureTopH, sigW, signatureBottomH, { fontSize: 5.9, align: "center" });
+  drawPdfCellText(doc, `Waktu/Time :\n${data.requestDisplay || ""}`, x0, y + signatureTopH, sigW, signatureBottomH, { fontSize: 6.1 });
+  drawPdfCellText(doc, `Waktu/Time :\n${data.startDisplay || ""}`, x0 + sigW, y + signatureTopH, sigW, signatureBottomH, { fontSize: 6.1 });
+  drawPdfCellText(doc, `Selesai/Finish\nTanggal/Date : ${data.closeDateOnly || ""}\nWaktu/Time : ${data.closeTimeOnly || ""}`, x0 + sigW * 2, y + signatureTopH, sigW, signatureBottomH, { fontSize: 5.9, align: "center" });
 
   const grandTotalMatch = (data.totalBreakdown || "").match(/TOTAL KESELURUHAN:\s*(Rp\s*[\d.]+)/i)
     || (data.totalBreakdown || "").match(/TOTAL:\s*(Rp\s*[\d.]+)/i);
   const grandTotal = grandTotalMatch ? grandTotalMatch[1] : "";
-  drawPdfCellText(doc, `Total Rincian/Total Breakdown :\n${grandTotal}\nJam/Hours (S) :`, x0 + sigW * 3, y + signatureTopH, sigW, signatureBottomH, { fontSize: 5.9 });
+  drawPdfCellText(doc, `Total Rincian/Total Breakdown :\n${grandTotal}\nJam/Hours (S) :\n${data.duration || "-"}`, x0 + sigW * 3, y + signatureTopH, sigW, signatureBottomH, { fontSize: 5.7 });
 
   // Pastikan garis terluar tetap tajam setelah semua fill/line selesai.
   doc.setLineWidth(0.35);
