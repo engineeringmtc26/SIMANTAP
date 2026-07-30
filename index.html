@@ -335,6 +335,19 @@ let targetItemCategory = "";
 let targetItemStatus = "";
 let targetCurrentBiaya = "";
 
+// Konfigurasi identitas formulir PDF. Nilai ini akan ditimpa oleh
+// pdfConfig dari backend apabila tersedia.
+let pdfFormConfig = {
+  companyName: "PT. INDUSTRI NABATI LESTARI",
+  plantName: "PABRIK MINYAK GORENG",
+  addressLine1: "Komp. KEK Sei Mangkei, Kav. 2-3, Kec. Bosar Maligas,",
+  addressLine2: "Kab. Simalungun, Sumatera Utara, 21183",
+  documentNumber: "",
+  effectiveDate: "",
+  revisionNumber: "",
+  logoUrl: "logo%20inl.png"
+};
+
 const mainBtns = document.querySelectorAll(".btn-main");
 const subBtns = document.querySelectorAll(".btn-sub");
 const subMenuContainer = document.getElementById("sub-menu-container");
@@ -444,6 +457,7 @@ async function fetchData() {
       const result = await res.json();
       if (!result.success) throw new Error(result.message || "Gagal memuat data master");
 
+      if (result.pdfConfig) pdfFormConfig = { ...pdfFormConfig, ...result.pdfConfig };
       globalHeaders = result.headers || [];
       currentDataObjects = (result.items || []).map(it => ({
         rowData: it.rowData,
@@ -467,6 +481,7 @@ async function fetchData() {
       const result = await res.json();
       if (!result.success) throw new Error(result.message || "Gagal memuat data");
 
+      if (result.pdfConfig) pdfFormConfig = { ...pdfFormConfig, ...result.pdfConfig };
       globalHeaders = result.headers || [];
       currentDataObjects = (result.rows || []).map(r => ({
         rowData: r,
@@ -708,8 +723,165 @@ function showModal(originalIndex, reqId, itemCat, itemStat) {
 
 // ============================================================================
 // EXPORT PDF PER TIKET (hanya untuk WO berstatus Finished)
+// Tampilan dibuat sebagai formulir A4, bukan lagi tabel Field-Detail.
 // ============================================================================
-function exportTicketToPDF() {
+function normalizePdfKey(value) {
+  return (value || "")
+    .toString()
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+}
+
+function getPdfField(aliases, fallback = "") {
+  const normalizedAliases = aliases.map(normalizePdfKey);
+
+  // Prioritaskan kecocokan persis agar kolom seperti "Tanggal Selesai"
+  // tidak tertukar dengan kolom "Tanggal" biasa.
+  for (let i = 0; i < globalHeaders.length; i++) {
+    const key = normalizePdfKey(globalHeaders[i]);
+    if (normalizedAliases.includes(key)) {
+      const value = targetRowData[i];
+      if (value !== null && value !== undefined && value.toString().trim() !== "") {
+        return value.toString().trim();
+      }
+    }
+  }
+
+  // Fallback ke pencarian sebagian untuk variasi nama header spreadsheet.
+  for (let i = 0; i < globalHeaders.length; i++) {
+    const key = normalizePdfKey(globalHeaders[i]);
+    const matched = normalizedAliases.some(alias => key.includes(alias) || alias.includes(key));
+    if (matched) {
+      const value = targetRowData[i];
+      if (value !== null && value !== undefined && value.toString().trim() !== "") {
+        return value.toString().trim();
+      }
+    }
+  }
+
+  return fallback;
+}
+
+function getPdfTicketData() {
+  const category = (targetItemCategory || getPdfField(["kategori", "category"])).toLowerCase();
+  const priority = getPdfField(["prioritas", "priority"]).toLowerCase();
+  const biayaText = getPdfField(["rincian biaya", "biaya wo", "biaya", "material"]);
+  const materialRows = parseBiayaText(biayaText).slice(0, 4);
+
+  return {
+    department: getPdfField(["bagian", "bagian pemohon", "department", "section", "departemen"]),
+    category,
+    woNumber: getPdfField(["nomor wo", "no wo", "work order number", "request id"], targetRequestId || ""),
+    requestDate: getPdfField(["tanggal pengajuan", "tanggal request", "timestamp", "tanggal"]),
+    equipmentNo: getPdfField(["no alat", "nomor alat", "equip no", "equipment no", "tag number"]),
+    equipmentName: getPdfField(["nama alat", "equip name", "equipment name", "nama equipment"]),
+    location: getPdfField(["lokasi", "function location", "functional location", "area"]),
+    requestWork: getPdfField([
+      "permintaan pekerjaan", "request work", "uraian pekerjaan", "deskripsi pekerjaan",
+      "keluhan", "problem", "kerusakan", "request"
+    ]),
+    repairWorkDone: getPdfField([
+      "pekerjaan perbaikan selesai", "repair work done", "hasil pekerjaan", "tindakan perbaikan",
+      "penyelesaian", "keterangan perbaikan", "pekerjaan yang dilakukan"
+    ]),
+    priority,
+    labour: getPdfField(["pekerja", "labour", "pelaksana", "teknisi", "maintenance in charge"]),
+    startTime: getPdfField(["jam mulai", "waktu mulai", "start", "tanggal mulai", "tanggal approved"]),
+    finishTime: getPdfField(["jam selesai", "waktu selesai", "finish", "tanggal close", "tanggal selesai", "tanggal closed"]),
+    requestedBy: getPdfField(["nama pemohon", "requested by", "nama", "user"]),
+    receivedBy: getPdfField(["diterima oleh", "received by", "maintenance penerima"]),
+    doneBy: getPdfField(["pekerjaan diselesaikan oleh", "job done by", "mtc in charge", "maintenance in charge", "teknisi"]),
+    acceptedBy: getPdfField(["pekerjaan diterima oleh", "job accepted by", "user in charge", "penerima hasil"]),
+    totalBreakdown: biayaText,
+    materialRows
+  };
+}
+
+function loadImageAsDataUrl(src) {
+  return new Promise((resolve, reject) => {
+    if (!src) {
+      reject(new Error("URL logo kosong"));
+      return;
+    }
+
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    img.onload = () => {
+      try {
+        const canvas = document.createElement("canvas");
+        canvas.width = img.naturalWidth || img.width;
+        canvas.height = img.naturalHeight || img.height;
+        const ctx = canvas.getContext("2d");
+        ctx.drawImage(img, 0, 0);
+        resolve(canvas.toDataURL("image/png"));
+      } catch (err) {
+        reject(err);
+      }
+    };
+    img.onerror = () => reject(new Error("Logo tidak dapat dimuat"));
+    img.src = src;
+  });
+}
+
+function drawPdfCheckbox(doc, x, y, checked, size = 3.2) {
+  doc.rect(x, y, size, size);
+  if (checked) {
+    doc.setLineWidth(0.45);
+    doc.line(x + 0.6, y + 1.7, x + 1.35, y + 2.55);
+    doc.line(x + 1.35, y + 2.55, x + 2.75, y + 0.7);
+    doc.setLineWidth(0.2);
+  }
+}
+
+function drawPdfText(doc, text, x, y, options = {}) {
+  const {
+    width = 50,
+    maxLines = 3,
+    fontSize = 7,
+    fontStyle = "normal",
+    align = "left",
+    lineHeightFactor = 1.12
+  } = options;
+
+  doc.setFont("helvetica", fontStyle);
+  doc.setFontSize(fontSize);
+  const lines = doc.splitTextToSize((text || "-").toString(), width).slice(0, maxLines);
+  doc.text(lines, x, y, { align, lineHeightFactor });
+  return lines;
+}
+
+function drawPdfCellText(doc, text, x, y, w, h, options = {}) {
+  const padding = options.padding ?? 1.5;
+  const fontSize = options.fontSize ?? 6.5;
+  const maxLines = Math.max(1, Math.floor((h - padding * 2) / (fontSize * 0.38)));
+  drawPdfText(doc, text, options.align === "center" ? x + w / 2 : x + padding, y + padding + fontSize * 0.36, {
+    width: w - padding * 2,
+    maxLines,
+    fontSize,
+    fontStyle: options.fontStyle || "normal",
+    align: options.align || "left",
+    lineHeightFactor: 1.08
+  });
+}
+
+function drawPdfLabelValue(doc, label, value, x, y, labelWidth, totalWidth) {
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(6.7);
+  doc.text(label, x, y);
+  doc.line(x + labelWidth, y + 0.5, x + totalWidth, y + 0.5);
+  if (value) {
+    drawPdfText(doc, value, x + labelWidth + 1, y - 0.6, {
+      width: totalWidth - labelWidth - 2,
+      maxLines: 1,
+      fontSize: 6.6
+    });
+  }
+}
+
+async function exportTicketToPDF() {
   if (!window.jspdf) {
     alert("Modul PDF belum siap dimuat, coba lagi sesaat lagi.");
     return;
@@ -724,43 +896,284 @@ function exportTicketToPDF() {
   }
 
   const { jsPDF } = window.jspdf;
-  const doc = new jsPDF({ orientation: "portrait", unit: "pt", format: "a4" });
+  const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4", compress: true });
+  const data = getPdfTicketData();
 
-  doc.setFontSize(15);
-  doc.text("SIMANTAP - Detail Work Order", 40, 40);
-  doc.setFontSize(10);
-  doc.setTextColor(90);
-  doc.text(`Nomor WO / ID  : ${targetRequestId || "-"}`, 40, 58);
-  doc.text(`Kategori       : ${targetItemCategory || "-"}`, 40, 72);
-  doc.text(`Diekspor pada  : ${new Date().toLocaleString('id-ID')}`, 40, 86);
-  doc.setTextColor(0);
+  const pageW = 210;
+  const pageH = 297;
+  const x0 = 5;
+  const y0 = 5;
+  const formW = 200;
+  const black = [0, 0, 0];
+  const yellow = [250, 204, 21];
+  const lightGray = [247, 247, 247];
 
-  const bodyRows = [];
-  for (let i = 0; i < globalHeaders.length; i++) {
-    const headerName = globalHeaders[i] ? globalHeaders[i].toString().trim() : `Kolom ${i + 1}`;
-    if (headerName === "") continue;
-    const rawValue = targetRowData[i];
-    const value = (rawValue === null || rawValue === undefined || rawValue.toString().trim() === "")
-      ? "-"
-      : rawValue.toString().trim();
-    bodyRows.push([headerName, value]);
+  doc.setDrawColor(...black);
+  doc.setTextColor(...black);
+  doc.setLineWidth(0.2);
+  doc.setFont("helvetica", "normal");
+
+  // -------------------- HEADER --------------------
+  const headerH = 34;
+  const logoW = 40;
+  const titleW = 100;
+  const metaW = 60;
+  doc.rect(x0, y0, formW, headerH);
+  doc.line(x0 + logoW, y0, x0 + logoW, y0 + headerH);
+  doc.line(x0 + logoW + titleW, y0, x0 + logoW + titleW, y0 + headerH);
+
+  try {
+    const logoElement = document.querySelector('img[alt="Logo INL"]');
+    const logoSrc = logoElement?.src || pdfFormConfig.logoUrl;
+    const logoData = await loadImageAsDataUrl(logoSrc);
+    doc.addImage(logoData, "PNG", x0 + 5, y0 + 6, logoW - 10, headerH - 12, undefined, "FAST");
+  } catch (logoErr) {
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(13);
+    doc.text("INL", x0 + logoW / 2, y0 + headerH / 2 + 2, { align: "center" });
   }
 
-  doc.autoTable({
-    startY: 102,
-    head: [["Field", "Detail"]],
-    body: bodyRows,
-    styles: { fontSize: 9, cellPadding: 6, overflow: "linebreak", valign: "top" },
-    columnStyles: {
-      0: { cellWidth: 140, fontStyle: "bold" },
-      1: { cellWidth: "auto" }
-    },
-    headStyles: { fillColor: [0, 74, 198], textColor: 255 },
-    alternateRowStyles: { fillColor: [239, 244, 255] }
+  const titleX = x0 + logoW;
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(12.2);
+  doc.text((pdfFormConfig.companyName || "PT. INDUSTRI NABATI LESTARI").toUpperCase(), titleX + titleW / 2, y0 + 7.5, { align: "center" });
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(6.3);
+  doc.text((pdfFormConfig.plantName || "PABRIK MINYAK GORENG").toUpperCase(), titleX + titleW / 2, y0 + 11.8, { align: "center" });
+  doc.text(pdfFormConfig.addressLine1 || "", titleX + titleW / 2, y0 + 15.4, { align: "center" });
+  doc.text(pdfFormConfig.addressLine2 || "", titleX + titleW / 2, y0 + 18.8, { align: "center" });
+  doc.line(titleX, y0 + 21, titleX + titleW, y0 + 21);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(10.5);
+  doc.text("FORMULIR WORK ORDER", titleX + titleW / 2, y0 + 29.2, { align: "center" });
+
+  const metaX = titleX + titleW;
+  const metaRows = [
+    ["Nomor Dokumen", pdfFormConfig.documentNumber || ""],
+    ["Tanggal Berlaku", pdfFormConfig.effectiveDate || ""],
+    ["Nomor Revisi", pdfFormConfig.revisionNumber || ""],
+    ["Halaman", "1 dari 1"]
+  ];
+  const metaRowH = headerH / 4;
+  metaRows.forEach((row, idx) => {
+    const ry = y0 + idx * metaRowH;
+    if (idx > 0) doc.line(metaX, ry, metaX + metaW, ry);
+    doc.line(metaX + 31, ry, metaX + 31, ry + metaRowH);
+    drawPdfCellText(doc, row[0], metaX, ry, 31, metaRowH, { fontSize: 6.1, fontStyle: "bold" });
+    drawPdfCellText(doc, row[1], metaX + 31, ry, metaW - 31, metaRowH, { fontSize: 6.2 });
   });
 
+  // -------------------- INFO --------------------
+  let y = y0 + headerH;
+  const infoH = 18;
+  doc.rect(x0, y, formW, infoH);
+  drawPdfLabelValue(doc, "Department / Section :", data.department, x0 + 2, y + 5.2, 31, 88);
+
+  doc.setFontSize(6.5);
+  doc.text("Kategori / Category :", x0 + 2, y + 12.4);
+  const categoryItems = [
+    ["Mechanical", ["mechanical"]],
+    ["Electrical", ["electrical"]],
+    ["Fabrikasi/Fabrication", ["fabrication", "fabrikasi", "modification"]],
+    ["Lain-Lain/Others", ["other", "others", "lain"]]
+  ];
+  const categoryPositions = [x0 + 34, x0 + 62, x0 + 89, x0 + 124];
+  doc.setFontSize(5.8);
+  categoryItems.forEach(([label, keys], idx) => {
+    const categoryX = categoryPositions[idx];
+    const checked = keys.some(key => data.category.includes(key));
+    drawPdfCheckbox(doc, categoryX, y + 9.5, checked, 3);
+    doc.text(label, categoryX + 4, y + 12.1);
+  });
+
+  drawPdfLabelValue(doc, "No. WO :", data.woNumber, x0 + 154, y + 5.2, 13, 43);
+  drawPdfLabelValue(doc, "Date :", data.requestDate, x0 + 154, y + 12.4, 13, 43);
+
+  // -------------------- EQUIPMENT / ACCEPTANCE --------------------
+  y += infoH;
+  const equipH = 18;
+  doc.rect(x0, y, formW, equipH);
+  doc.line(x0 + 80, y, x0 + 80, y + equipH);
+  doc.line(x0 + 120, y, x0 + 120, y + equipH);
+  doc.line(x0 + 140, y, x0 + 140, y + equipH);
+  doc.line(x0 + 80, y + 9, x0, y + 9);
+  drawPdfCellText(doc, `No. Alat/Equip No : ${data.equipmentNo || ""}`, x0, y, 80, 9, { fontSize: 6.6 });
+  drawPdfCellText(doc, `Nama Alat/Equip Name : ${data.equipmentName || ""}`, x0, y + 9, 80, 9, { fontSize: 6.6 });
+  drawPdfCellText(doc, "Penerimaan Pengguna\nUser Acceptance", x0 + 80, y, 40, equipH, { fontSize: 6.7, fontStyle: "bold", align: "center" });
+  doc.setFontSize(6.5);
+  doc.text("Yes", x0 + 122, y + 6.1);
+  drawPdfCheckbox(doc, x0 + 133.5, y + 3.4, true);
+  doc.text("No", x0 + 122, y + 14.2);
+  drawPdfCheckbox(doc, x0 + 133.5, y + 11.5, false);
+  drawPdfCellText(doc, `Lokasi/Function Location :\n${data.location || ""}`, x0 + 140, y, 60, equipH, { fontSize: 6.6, fontStyle: "bold" });
+
+  // -------------------- REQUEST / WORK DONE --------------------
+  y += equipH;
+  const requestH = 43;
+  const requestHeaderH = 7;
+  doc.rect(x0, y, formW, requestH);
+  doc.line(x0 + 100, y, x0 + 100, y + requestH);
+  doc.setFillColor(...lightGray);
+  doc.rect(x0, y, 100, requestHeaderH, "F");
+  doc.rect(x0 + 100, y, 100, requestHeaderH, "F");
+  doc.line(x0, y + requestHeaderH, x0 + formW, y + requestHeaderH);
+  doc.setFont("helvetica", "bolditalic");
+  doc.setFontSize(6.7);
+  doc.text("Permintaan Pekerjaan / Request Work", x0 + 50, y + 4.8, { align: "center" });
+  doc.text("Pekerjaan Perbaikan Selesai / Repair Work Done", x0 + 150, y + 4.8, { align: "center" });
+  drawPdfCellText(doc, data.requestWork, x0 + 1, y + requestHeaderH + 1, 98, requestH - requestHeaderH - 2, { fontSize: 7 });
+  drawPdfCellText(doc, data.repairWorkDone, x0 + 101, y + requestHeaderH + 1, 98, requestH - requestHeaderH - 2, { fontSize: 7 });
+
+  // -------------------- PRIORITY / CHECKLIST --------------------
+  y += requestH;
+  const checklistH = 31;
+  const priorityW = 80;
+  const checklistW = formW - priorityW;
+  doc.rect(x0, y, formW, checklistH);
+  doc.line(x0 + priorityW, y, x0 + priorityW, y + checklistH);
+
+  const priorityHeaderH = 7;
+  doc.setFillColor(...lightGray);
+  doc.rect(x0, y, priorityW, priorityHeaderH, "F");
+  doc.line(x0, y + priorityHeaderH, x0 + priorityW, y + priorityHeaderH);
+  doc.setFont("helvetica", "bolditalic");
+  doc.setFontSize(6.8);
+  doc.text("Prioritas / Priority", x0 + priorityW / 2, y + 4.8, { align: "center" });
+
+  const priorities = [
+    ["Tinggi / High", "high", "tinggi"],
+    ["Menengah / Medium", "medium", "menengah"],
+    ["Rendah / Low", "low", "rendah"]
+  ];
+  const prRowH = (checklistH - priorityHeaderH) / 3;
+  priorities.forEach((row, idx) => {
+    const ry = y + priorityHeaderH + idx * prRowH;
+    if (idx > 0) doc.line(x0, ry, x0 + priorityW, ry);
+    doc.line(x0 + 65, ry, x0 + 65, ry + prRowH);
+    drawPdfCellText(doc, row[0], x0, ry, 65, prRowH, { fontSize: 6.6 });
+    drawPdfCheckbox(doc, x0 + 70.5, ry + 2.4, data.priority.includes(row[1]) || data.priority.includes(row[2]));
+  });
+
+  const cx = x0 + priorityW;
+  const cTitleH = 7;
+  const cHeadH = 8;
+  const cBodyH = (checklistH - cTitleH - cHeadH) / 2;
+  const cCols = [8, 52, 30, 30];
+  doc.setFillColor(...yellow);
+  doc.rect(cx, y, checklistW, cTitleH, "F");
+  doc.rect(cx, y + cTitleH, checklistW, cHeadH, "F");
+  doc.line(cx, y + cTitleH, cx + checklistW, y + cTitleH);
+  doc.line(cx, y + cTitleH + cHeadH, cx + checklistW, y + cTitleH + cHeadH);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(7);
+  doc.text("MAINTENANCE CLEARANCE CHECKLIST", cx + checklistW / 2, y + 4.8, { align: "center" });
+
+  let colX = cx;
+  cCols.slice(0, -1).forEach((w) => {
+    colX += w;
+    doc.line(colX, y + cTitleH, colX, y + checklistH);
+  });
+  drawPdfCellText(doc, "No", cx, y + cTitleH, cCols[0], cHeadH, { fontSize: 5.8, fontStyle: "bold", align: "center" });
+  drawPdfCellText(doc, "Kondisi Area Kerja", cx + cCols[0], y + cTitleH, cCols[1], cHeadH, { fontSize: 5.8, fontStyle: "bold", align: "center" });
+  drawPdfCellText(doc, "MTC (Nama/Prf/Tgl)", cx + cCols[0] + cCols[1], y + cTitleH, cCols[2], cHeadH, { fontSize: 5.4, fontStyle: "bold", align: "center" });
+  drawPdfCellText(doc, "User (Nama/Prf/Tgl)", cx + cCols[0] + cCols[1] + cCols[2], y + cTitleH, cCols[3], cHeadH, { fontSize: 5.4, fontStyle: "bold", align: "center" });
+
+  const checklistRows = [
+    "Area bersih",
+    "Tidak ada tools dan/atau material yang tertinggal di area kerja"
+  ];
+  checklistRows.forEach((label, idx) => {
+    const ry = y + cTitleH + cHeadH + idx * cBodyH;
+    if (idx > 0) doc.line(cx, ry, cx + checklistW, ry);
+    doc.setFillColor(...yellow);
+    doc.rect(cx, ry, cCols[0] + cCols[1], cBodyH, "F");
+    drawPdfCellText(doc, `${idx + 1}.`, cx, ry, cCols[0], cBodyH, { fontSize: 6.2, align: "center" });
+    drawPdfCellText(doc, label, cx + cCols[0], ry, cCols[1], cBodyH, { fontSize: 5.7 });
+    drawPdfCellText(doc, "OK/TDK*  □", cx + cCols[0] + cCols[1], ry, cCols[2], cBodyH, { fontSize: 5.6, align: "center" });
+    drawPdfCellText(doc, "OK/TDK*  □", cx + cCols[0] + cCols[1] + cCols[2], ry, cCols[3], cBodyH, { fontSize: 5.6, align: "center" });
+  });
+
+  // -------------------- MATERIAL / LABOUR --------------------
+  y += checklistH;
+  const materialH = 41;
+  const materialHeaderH = 12;
+  const materialRowH = (materialH - materialHeaderH) / 4;
+  const materialCols = [70, 20, 36, 34, 40];
+  doc.rect(x0, y, formW, materialH);
+  doc.setFillColor(...lightGray);
+  doc.rect(x0, y, formW, materialHeaderH, "F");
+  doc.line(x0, y + materialHeaderH, x0 + formW, y + materialHeaderH);
+
+  let mx = x0;
+  materialCols.slice(0, -1).forEach(w => {
+    mx += w;
+    doc.line(mx, y, mx, y + materialH);
+  });
+  drawPdfCellText(doc, "Keterangan Material\nDescription Material", x0, y, materialCols[0], materialHeaderH, { fontSize: 6.2, fontStyle: "italic", align: "center" });
+  drawPdfCellText(doc, "Jumlah\nQuantity", x0 + materialCols[0], y, materialCols[1], materialHeaderH, { fontSize: 6.2, fontStyle: "italic", align: "center" });
+  drawPdfCellText(doc, "Pekerja\nLabour", x0 + materialCols[0] + materialCols[1], y, materialCols[2], materialHeaderH, { fontSize: 6.2, fontStyle: "italic", align: "center" });
+
+  const hourX = x0 + materialCols[0] + materialCols[1] + materialCols[2];
+  drawPdfCellText(doc, "Jam/Hour", hourX, y, materialCols[3], materialHeaderH / 2, { fontSize: 6.2, fontStyle: "italic", align: "center" });
+  doc.line(hourX, y + materialHeaderH / 2, hourX + materialCols[3], y + materialHeaderH / 2);
+  doc.line(hourX + materialCols[3] / 2, y + materialHeaderH / 2, hourX + materialCols[3] / 2, y + materialH);
+  drawPdfCellText(doc, "Mulai\nStart", hourX, y + materialHeaderH / 2, materialCols[3] / 2, materialHeaderH / 2, { fontSize: 5.5, fontStyle: "italic", align: "center" });
+  drawPdfCellText(doc, "Selesai\nFinish", hourX + materialCols[3] / 2, y + materialHeaderH / 2, materialCols[3] / 2, materialHeaderH / 2, { fontSize: 5.5, fontStyle: "italic", align: "center" });
+  drawPdfCellText(doc, "Remarks", x0 + formW - materialCols[4], y, materialCols[4], materialHeaderH, { fontSize: 6.2, fontStyle: "italic", align: "center" });
+
+  for (let i = 0; i < 4; i++) {
+    const ry = y + materialHeaderH + i * materialRowH;
+    if (i > 0) doc.line(x0, ry, x0 + formW, ry);
+    const row = data.materialRows[i];
+    const desc = row?.desc || "";
+    const qty = row?.qty || "";
+    const price = row ? formatRupiah(row.harga) : "";
+    drawPdfCellText(doc, desc, x0, ry, materialCols[0], materialRowH, { fontSize: 5.8 });
+    drawPdfCellText(doc, qty, x0 + materialCols[0], ry, materialCols[1], materialRowH, { fontSize: 5.8, align: "center" });
+    drawPdfCellText(doc, i === 0 ? data.labour : "", x0 + materialCols[0] + materialCols[1], ry, materialCols[2], materialRowH, { fontSize: 5.8, align: "center" });
+    drawPdfCellText(doc, i === 0 ? data.startTime : "", hourX, ry, materialCols[3] / 2, materialRowH, { fontSize: 5.2, align: "center" });
+    drawPdfCellText(doc, i === 0 ? data.finishTime : "", hourX + materialCols[3] / 2, ry, materialCols[3] / 2, materialRowH, { fontSize: 5.2, align: "center" });
+    drawPdfCellText(doc, price, x0 + formW - materialCols[4], ry, materialCols[4], materialRowH, { fontSize: 5.6, align: "center" });
+  }
+
+  // -------------------- SIGNATURES --------------------
+  y += materialH;
+  const signatureTopH = 33;
+  const signatureBottomH = 22;
+  const sigW = formW / 4;
+  doc.rect(x0, y, formW, signatureTopH + signatureBottomH);
+  for (let i = 1; i < 4; i++) doc.line(x0 + i * sigW, y, x0 + i * sigW, y + signatureTopH + signatureBottomH);
+  doc.line(x0, y + signatureTopH, x0 + formW, y + signatureTopH);
+
+  const sigHeaders = [
+    ["Diminta Oleh,", "Requested by,", data.requestedBy || "User"],
+    ["Diterima Oleh,", "Received by,", data.receivedBy || "MTC"],
+    ["Pekerjaan Diselesaikan Oleh", "Job Done by,", data.doneBy || "MTC In Charge"],
+    ["Pekerjaan Diterima Oleh,", "Job Accepted by,", data.acceptedBy || "User In Charge"]
+  ];
+  sigHeaders.forEach((item, idx) => {
+    const sx = x0 + idx * sigW;
+    doc.line(sx, y + 12, sx + sigW, y + 12);
+    drawPdfCellText(doc, `${item[0]}\n${item[1]}`, sx, y, sigW, 12, { fontSize: 6.1, align: "center" });
+    drawPdfCellText(doc, item[2], sx, y + 25, sigW, 8, { fontSize: 6.1, align: "center" });
+  });
+
+  drawPdfCellText(doc, `Waktu/Time :\n${data.requestDate || ""}`, x0, y + signatureTopH, sigW, signatureBottomH, { fontSize: 6.1 });
+  drawPdfCellText(doc, `Waktu/Time :\n${data.startTime || ""}`, x0 + sigW, y + signatureTopH, sigW, signatureBottomH, { fontSize: 6.1 });
+  drawPdfCellText(doc, `Selesai/Finish\nTanggal/Date : ${data.finishTime || ""}\nWaktu/Time :`, x0 + sigW * 2, y + signatureTopH, sigW, signatureBottomH, { fontSize: 5.9, align: "center" });
+
+  const grandTotalMatch = (data.totalBreakdown || "").match(/TOTAL KESELURUHAN:\s*(Rp\s*[\d.]+)/i)
+    || (data.totalBreakdown || "").match(/TOTAL:\s*(Rp\s*[\d.]+)/i);
+  const grandTotal = grandTotalMatch ? grandTotalMatch[1] : "";
+  drawPdfCellText(doc, `Total Rincian/Total Breakdown :\n${grandTotal}\nJam/Hours (S) :`, x0 + sigW * 3, y + signatureTopH, sigW, signatureBottomH, { fontSize: 5.9 });
+
+  // Pastikan garis terluar tetap tajam setelah semua fill/line selesai.
+  doc.setLineWidth(0.35);
+  doc.rect(x0, y0, formW, y + signatureTopH + signatureBottomH - y0);
+  doc.setLineWidth(0.2);
+
   const stamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-");
-  const safeReqId = (targetRequestId || "WO").toString().replace(/[^a-zA-Z0-9-_]/g, "_");
+  const safeReqId = (data.woNumber || targetRequestId || "WO").toString().replace(/[^a-zA-Z0-9-_]/g, "_");
   doc.save(`SIMANTAP_${safeReqId}_${stamp}.pdf`);
 }
 
