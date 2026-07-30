@@ -230,11 +230,6 @@
           Terapkan
         </button>
       </div>
-
-      <button id="btn-export-pdf" type="button" class="w-full md:w-auto px-lg py-sm bg-surface-container-high text-primary rounded-lg font-body-md text-body-md font-semibold hover:bg-primary-container hover:text-on-primary transition-all flex items-center justify-center gap-xs">
-        <span class="material-symbols-outlined text-[18px]">picture_as_pdf</span>
-        Export PDF
-      </button>
     </div>
 
     <!-- Dashboard Grid -->
@@ -340,9 +335,6 @@ let targetItemCategory = "";
 let targetItemStatus = "";
 let targetCurrentBiaya = "";
 
-let lastExportRows = [];
-let lastExportTitle = "";
-
 const mainBtns = document.querySelectorAll(".btn-main");
 const subBtns = document.querySelectorAll(".btn-sub");
 const subMenuContainer = document.getElementById("sub-menu-container");
@@ -399,61 +391,6 @@ filterType.addEventListener("change", () => {
 
 filterBagianSelect.addEventListener("change", () => { fetchData(); });
 btnApplyFilter.addEventListener("click", () => { renderData(); });
-
-function getFilterPeriodLabel() {
-  const val = filterType.value;
-  const fmt = (iso) => {
-    if (!iso) return "";
-    const [y, m, d] = iso.split("-");
-    return `${d}/${m}/${y}`;
-  };
-  if (val === "single" && date1Input.value) {
-    return `Tanggal ${fmt(date1Input.value)}`;
-  } else if (val === "range" && date1Input.value && date2Input.value) {
-    return `Rentang ${fmt(date1Input.value)} s/d ${fmt(date2Input.value)}`;
-  }
-  return "Semua Waktu";
-}
-
-async function exportToPDF() {
-  if (!window.jspdf) {
-    alert("Modul PDF belum siap dimuat, coba lagi sesaat lagi.");
-    return;
-  }
-  if (!lastExportRows || lastExportRows.length === 0) {
-    alert("Tidak ada data pada filter saat ini untuk diekspor.");
-    return;
-  }
-
-  const { jsPDF } = window.jspdf;
-  const doc = new jsPDF({ orientation: "landscape", unit: "pt", format: "a4" });
-
-  const periodLabel = getFilterPeriodLabel();
-
-  doc.setFontSize(15);
-  doc.text("SIMANTAP - " + lastExportTitle, 40, 40);
-  doc.setFontSize(10);
-  doc.setTextColor(90);
-  doc.text(`Periode data: ${periodLabel}`, 40, 58);
-  doc.text(`Diekspor pada: ${new Date().toLocaleString('id-ID')}`, 40, 72);
-  doc.setTextColor(0);
-
-  doc.autoTable({
-    startY: 88,
-    head: [["No", "Nomor WO / Request ID", "Nama Pemohon", "Kategori", "Status", "Tanggal"]],
-    body: lastExportRows,
-    styles: { fontSize: 9, cellPadding: 5 },
-    headStyles: { fillColor: [0, 74, 198], textColor: 255 },
-    alternateRowStyles: { fillColor: [239, 244, 255] }
-  });
-
-  const safeCategory = activeCategory === "master" ? "master" : activeCategory;
-  const safeStatus = activeCategory === "master" ? "semua-status" : activeStatus;
-  const stamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-");
-  doc.save(`SIMANTAP_${safeCategory}_${safeStatus}_${stamp}.pdf`);
-}
-
-document.getElementById("btn-export-pdf").addEventListener("click", exportToPDF);
 
 function parseCSVDateToISO(dateStr) {
   if (!dateStr) return "";
@@ -544,8 +481,6 @@ async function fetchData() {
       panelTitleEl.textContent = t;
       summaryCountEl.textContent = "00";
       summaryLabelEl.textContent = "0 TIKET DITEMUKAN";
-      lastExportRows = [];
-      lastExportTitle = t;
       panel.innerHTML = `<div class="text-center py-lg font-body-md text-body-md text-error">Data kosong atau tidak ditemukan.</div>`;
       return;
     }
@@ -587,7 +522,6 @@ function renderData() {
   const d2 = date2Input.value;
 
   let filteredItems = [];
-  let exportRows = [];
 
   const activeStatusLabelMap = {
     pending: "PENDING APPROVAL",
@@ -625,13 +559,8 @@ function renderData() {
         itemStat: itemObj.status,
         labelStat: activeCategory === "master" ? itemObj.labelStat : statLabel
       });
-
-      exportRows.push([filteredItems.length, req || "-", name || "-", catLabel, statLabel, tanggal]);
     }
   }
-
-  lastExportRows = exportRows;
-  lastExportTitle = title;
 
   panelTitleEl.textContent = title;
   summaryCountEl.textContent = String(filteredItems.length).padStart(2, "0");
@@ -750,13 +679,89 @@ function showModal(originalIndex, reqId, itemCat, itemStat) {
     html += `
       <div class="mt-md md:mt-lg pt-md border-t border-dashed border-outline-variant flex flex-col sm:flex-row gap-sm" id="action-footer">
         <button class="flex-1 w-full px-md py-sm rounded-lg font-body-md text-body-md font-semibold text-on-primary bg-primary hover:opacity-90 transition-opacity" onclick="openEditBiayaForm()">Edit Rincian Biaya</button>
+        <button class="flex-1 w-full px-md py-sm rounded-lg font-body-md text-body-md font-semibold text-primary border border-primary hover:bg-primary hover:text-on-primary transition-all flex items-center justify-center gap-xs" onclick="exportTicketToPDF()">
+          <span class="material-symbols-outlined text-[18px]">picture_as_pdf</span>
+          Export PDF
+        </button>
       </div>
       <div id="action-msg" class="text-center mt-sm font-label-md text-label-md text-outline"></div>
     `;
   }
 
+  // Export PDF per tiket HANYA tersedia untuk WO berstatus Finished.
+  // Untuk role selain maintenance (yang tidak mendapat tombol aksi apa pun
+  // di atas untuk tiket Finished), tampilkan tombol export saja.
+  if (targetItemStatus === "finished" && userRole !== "maintenance") {
+    html += `
+      <div class="mt-md md:mt-lg pt-md border-t border-dashed border-outline-variant flex flex-col sm:flex-row gap-sm">
+        <button class="flex-1 w-full px-md py-sm rounded-lg font-body-md text-body-md font-semibold text-primary border border-primary hover:bg-primary hover:text-on-primary transition-all flex items-center justify-center gap-xs" onclick="exportTicketToPDF()">
+          <span class="material-symbols-outlined text-[18px]">picture_as_pdf</span>
+          Export PDF
+        </button>
+      </div>
+    `;
+  }
+
   modalBody.innerHTML = html;
   modalOverlay.style.display = "flex";
+}
+
+// ============================================================================
+// EXPORT PDF PER TIKET (hanya untuk WO berstatus Finished)
+// ============================================================================
+function exportTicketToPDF() {
+  if (!window.jspdf) {
+    alert("Modul PDF belum siap dimuat, coba lagi sesaat lagi.");
+    return;
+  }
+  if (targetItemStatus !== "finished") {
+    alert("Export PDF hanya tersedia untuk Work Order yang sudah berstatus Finished.");
+    return;
+  }
+  if (!targetRowData || targetRowData.length === 0) {
+    alert("Data tiket tidak ditemukan untuk diekspor.");
+    return;
+  }
+
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ orientation: "portrait", unit: "pt", format: "a4" });
+
+  doc.setFontSize(15);
+  doc.text("SIMANTAP - Detail Work Order", 40, 40);
+  doc.setFontSize(10);
+  doc.setTextColor(90);
+  doc.text(`Nomor WO / ID  : ${targetRequestId || "-"}`, 40, 58);
+  doc.text(`Kategori       : ${targetItemCategory || "-"}`, 40, 72);
+  doc.text(`Diekspor pada  : ${new Date().toLocaleString('id-ID')}`, 40, 86);
+  doc.setTextColor(0);
+
+  const bodyRows = [];
+  for (let i = 0; i < globalHeaders.length; i++) {
+    const headerName = globalHeaders[i] ? globalHeaders[i].toString().trim() : `Kolom ${i + 1}`;
+    if (headerName === "") continue;
+    const rawValue = targetRowData[i];
+    const value = (rawValue === null || rawValue === undefined || rawValue.toString().trim() === "")
+      ? "-"
+      : rawValue.toString().trim();
+    bodyRows.push([headerName, value]);
+  }
+
+  doc.autoTable({
+    startY: 102,
+    head: [["Field", "Detail"]],
+    body: bodyRows,
+    styles: { fontSize: 9, cellPadding: 6, overflow: "linebreak", valign: "top" },
+    columnStyles: {
+      0: { cellWidth: 140, fontStyle: "bold" },
+      1: { cellWidth: "auto" }
+    },
+    headStyles: { fillColor: [0, 74, 198], textColor: 255 },
+    alternateRowStyles: { fillColor: [239, 244, 255] }
+  });
+
+  const stamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-");
+  const safeReqId = (targetRequestId || "WO").toString().replace(/[^a-zA-Z0-9-_]/g, "_");
+  doc.save(`SIMANTAP_${safeReqId}_${stamp}.pdf`);
 }
 
 async function executeAction(actionType, extra) {
