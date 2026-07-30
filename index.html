@@ -1025,18 +1025,28 @@ function loadImageAsDataUrl(src) {
   });
 }
 
-function drawPdfCheckbox(doc, x, y, checked, size = 3.2) {
-  // Paksa kotak checklist selalu hitam dan tegas, terlepas dari style
-  // garis yang sebelumnya digunakan oleh bagian PDF lain.
+// Semua garis struktur formulir memakai ukuran yang sama agar tidak ada
+// tabel yang terlihat lebih tebal atau lebih tipis dari bagian lainnya.
+const PDF_GRID_LINE_WIDTH = 0.30;
+const PDF_CHECKMARK_LINE_WIDTH = 0.42;
+
+function applyPdfGridStyle(doc) {
   doc.setDrawColor(0, 0, 0);
-  doc.setLineWidth(0.55);
+  doc.setLineWidth(PDF_GRID_LINE_WIDTH);
+  if (typeof doc.setLineCap === "function") doc.setLineCap("butt");
+  if (typeof doc.setLineJoin === "function") doc.setLineJoin("miter");
+}
+
+function drawPdfCheckbox(doc, x, y, checked, size = 3.2) {
+  // Border checkbox mengikuti ketebalan grid formulir.
+  applyPdfGridStyle(doc);
   doc.rect(x, y, size, size);
   if (checked) {
-    doc.setLineWidth(0.5);
+    doc.setLineWidth(PDF_CHECKMARK_LINE_WIDTH);
     doc.line(x + 0.6, y + 1.7, x + 1.35, y + 2.55);
     doc.line(x + 1.35, y + 2.55, x + 2.75, y + 0.7);
   }
-  doc.setLineWidth(0.2);
+  applyPdfGridStyle(doc);
 }
 
 function drawPdfText(doc, text, x, y, options = {}) {
@@ -1143,9 +1153,8 @@ async function exportTicketToPDF() {
   const yellow = [250, 204, 21];
   const lightGray = [247, 247, 247];
 
-  doc.setDrawColor(...black);
+  applyPdfGridStyle(doc);
   doc.setTextColor(...black);
-  doc.setLineWidth(0.2);
   doc.setFont("helvetica", "normal");
 
   // -------------------- HEADER --------------------
@@ -1254,12 +1263,10 @@ async function exportTicketToPDF() {
   doc.setFillColor(...lightGray);
   doc.rect(x0, y, halfFormW, requestHeaderH, "F");
   doc.rect(centerX, y, halfFormW, requestHeaderH, "F");
-  // Garis pembagi berada tepat pada poros tengah formulir.
-  doc.setDrawColor(0, 0, 0);
-  doc.setLineWidth(0.55);
-  doc.line(centerX, y, centerX, y + requestH);
+  // Garis header mengikuti ketebalan grid standar. Garis tengah kontinu
+  // digambar sekali pada tahap akhir agar tidak terjadi penumpukan stroke.
+  applyPdfGridStyle(doc);
   doc.line(x0, y + requestHeaderH, x0 + formW, y + requestHeaderH);
-  doc.setLineWidth(0.2);
   doc.setFont("helvetica", "bolditalic");
   doc.setFontSize(6.7);
   doc.text("Permintaan Pekerjaan / Request Work", x0 + halfFormW / 2, y + 4.8, { align: "center" });
@@ -1315,23 +1322,9 @@ async function exportTicketToPDF() {
     doc.rect(cx, rowY, cCols[0] + cCols[1], cBodyH, "F");
   }
 
-  // 2) Setelah semua fill selesai, gambar ulang seluruh grid dengan warna
-  // hitam pekat dan ketebalan yang lebih jelas.
-  doc.setDrawColor(0, 0, 0);
-  doc.setLineWidth(0.35);
-  doc.rect(cx, y, checklistW, checklistH);
-  doc.line(cx, y + cTitleH, cx + checklistW, y + cTitleH);
-  doc.line(cx, y + cTitleH + cHeadH, cx + checklistW, y + cTitleH + cHeadH);
-  doc.line(cx, y + cTitleH + cHeadH + cBodyH, cx + checklistW, y + cTitleH + cHeadH + cBodyH);
-
-  let colX = cx;
-  cCols.slice(0, -1).forEach((w) => {
-    colX += w;
-    doc.line(colX, y + cTitleH, colX, y + checklistH);
-  });
-
-  // 3) Isi teks dan checklist setelah grid selesai. Kotak checklist memiliki
-  // style garis hitamnya sendiri melalui drawPdfCheckbox().
+  // 2) Isi teks dan checklist. Grid hanya digambar satu kali pada tahap
+  // akhir supaya tidak terjadi penumpukan garis yang membuat tabel kuning
+  // tampak lebih tebal daripada tabel lainnya.
   doc.setFont("helvetica", "bold");
   doc.setFontSize(7);
   doc.text("MAINTENANCE CLEARANCE CHECKLIST", cx + checklistW / 2, y + 4.8, { align: "center" });
@@ -1354,9 +1347,9 @@ async function exportTicketToPDF() {
     drawPdfCheckbox(doc, cx + cCols[0] + cCols[1] + cCols[2] + (cCols[3] - 3.2) / 2, ry + (cBodyH - 3.2) / 2, true);
   });
 
-  // Redraw grid PALING AKHIR agar garis tidak tertutup fill maupun teks.
-  doc.setDrawColor(0, 0, 0);
-  doc.setLineWidth(0.65);
+  // Gambar grid checklist satu kali dan paling akhir. Ketebalannya sama
+  // persis dengan seluruh tabel lain pada formulir.
+  applyPdfGridStyle(doc);
   doc.rect(cx, y, checklistW, checklistH);
   doc.line(cx, y + cTitleH, cx + checklistW, y + cTitleH);
   doc.line(cx, y + cTitleH + cHeadH, cx + checklistW, y + cTitleH + cHeadH);
@@ -1366,10 +1359,7 @@ async function exportTicketToPDF() {
     finalColX += w;
     doc.line(finalColX, y + cTitleH, finalColX, y + checklistH);
   });
-
-  // Kembalikan ketebalan standar untuk bagian tabel berikutnya.
-  doc.setDrawColor(...black);
-  doc.setLineWidth(0.2);
+  applyPdfGridStyle(doc);
 
   // -------------------- MATERIAL / LABOUR --------------------
   y += checklistH;
@@ -1438,10 +1428,8 @@ async function exportTicketToPDF() {
   // Gambar ulang satu garis tengah kontinu paling akhir. Garis ini menjadi
   // acuan visual yang sama dari Request/Repair sampai tabel Material/Labour.
   const sharedCenterEndY = y + materialH;
-  doc.setDrawColor(0, 0, 0);
-  doc.setLineWidth(0.55);
+  applyPdfGridStyle(doc);
   doc.line(centerX, sharedCenterStartY, centerX, sharedCenterEndY);
-  doc.setLineWidth(0.2);
 
   // -------------------- SIGNATURES --------------------
   y += materialH;
@@ -1474,10 +1462,9 @@ async function exportTicketToPDF() {
   const grandTotal = grandTotalMatch ? grandTotalMatch[1] : "";
   drawPdfCellText(doc, `Total Rincian/Total Breakdown :\n${grandTotal}\nJam/Hours (S) :\n${data.duration || "-"}`, x0 + sigW * 3, y + signatureTopH, sigW, signatureBottomH, { fontSize: 5.7 });
 
-  // Pastikan garis terluar tetap tajam setelah semua fill/line selesai.
-  doc.setLineWidth(0.35);
+  // Border terluar memakai ketebalan yang sama dengan seluruh grid.
+  applyPdfGridStyle(doc);
   doc.rect(x0, y0, formW, y + signatureTopH + signatureBottomH - y0);
-  doc.setLineWidth(0.2);
 
   const stamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-");
   const safeReqId = (data.woNumber || targetRequestId || "WO").toString().replace(/[^a-zA-Z0-9-_]/g, "_");
