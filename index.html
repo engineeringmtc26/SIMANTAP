@@ -755,86 +755,8 @@ function showModal(originalIndex, reqId, itemCat, itemStat) {
     `;
   }
 
-  if (userRole === "maintenance" && (targetItemStatus === "rejected" || targetItemStatus === "finished")) {
-    const emailColIdx = globalHeaders.findIndex(h => h && h.toLowerCase().includes("email"));
-    const targetEmailRaw = emailColIdx !== -1 ? (rowData[emailColIdx] || "").trim() : "";
-    const targetEmailList = targetEmailRaw.split(/\r?\n/).map(s => s.trim()).filter(s => s.indexOf("@") !== -1);
-
-    html += `
-      <div class="mt-md md:mt-lg pt-md border-t border-dashed border-outline-variant">
-        <div class="font-label-md text-[10px] md:text-label-md text-outline uppercase tracking-wider mb-xs">Notifikasi Email</div>
-        <div class="flex flex-col sm:flex-row gap-sm sm:items-center justify-between">
-          <div class="font-body-md text-[13px] md:text-body-md text-on-surface-variant flex-1">
-            ${targetEmailList.length > 0
-              ? 'Email sudah otomatis dikirim ke:<br/>' + targetEmailList.map(e => '<b>' + escapeHtml(e) + '</b>').join('<br/>')
-              : '<span class="text-error font-semibold">Alamat email tidak ditemukan.</span>'}
-          </div>
-          <button class="w-full sm:w-auto px-md py-sm rounded-lg font-body-md text-body-md font-semibold text-on-primary bg-primary hover:opacity-90 transition-opacity flex justify-center items-center gap-xs shrink-0"
-            onclick="sendEmailNotification('${targetEmailRaw.replace(/'/g, "\\'")}')" ${targetEmailList.length === 0 ? 'disabled style="opacity: 0.5; cursor: not-allowed;"' : ''}>
-            <span class="material-symbols-outlined text-[18px]">mail</span> Kirim Ulang
-          </button>
-        </div>
-        <div id="email-action-msg" class="text-center font-label-md text-[10px] md:text-label-md mt-sm text-outline"></div>
-      </div>
-    `;
-  }
-
   modalBody.innerHTML = html;
   modalOverlay.style.display = "flex";
-}
-
-async function sendEmailNotification(emailAddress) {
-  if (!emailAddress) return;
-  if (!confirm(`Kirim ulang email notifikasi perubahan status WO ke:\n${emailAddress.split(/\r?\n/).join(', ')}?`)) return;
-
-  const msgBox = document.getElementById("email-action-msg");
-  if (msgBox) {
-    msgBox.textContent = "Mengirim email, mohon tunggu...";
-    msgBox.className = "text-center font-label-md text-[10px] md:text-label-md text-outline mt-sm";
-  }
-
-  const rejectIdx = globalHeaders.findIndex(h => h.toLowerCase().includes("alasan reject"));
-  const biayaIdx = globalHeaders.findIndex(h => h.toLowerCase().includes("biaya"));
-
-  let extraInfo = "";
-  if (targetItemStatus === "rejected" && rejectIdx !== -1) {
-     extraInfo = "Alasan Reject: " + (targetRowData[rejectIdx] || "-");
-  } else if (targetItemStatus === "finished" && biayaIdx !== -1) {
-     extraInfo = "";
-  }
-
-  try {
-    const res = await fetch(LOGIN_API_URL, {
-      method: "POST",
-      headers: { "Content-Type": "text/plain;charset=utf-8" },
-      body: JSON.stringify({
-        type: "send_email",
-        requestId: targetRequestId,
-        status: targetItemStatus,
-        category: targetItemCategory,
-        email: emailAddress,
-        extraInfo: extraInfo
-      })
-    });
-    const result = await res.json();
-
-    if (result.success) {
-      if (msgBox) { 
-        msgBox.textContent = "Email berhasil dikirim!"; 
-        msgBox.className = "text-center font-label-md text-[10px] md:text-label-md text-secondary mt-sm"; 
-      }
-    } else {
-      if (msgBox) { 
-        msgBox.textContent = "Gagal: " + result.message; 
-        msgBox.className = "text-center font-label-md text-[10px] md:text-label-md text-error mt-sm"; 
-      }
-    }
-  } catch (err) {
-    if (msgBox) { 
-      msgBox.textContent = "Gagal menghubungi server."; 
-      msgBox.className = "text-center font-label-md text-[10px] md:text-label-md text-error mt-sm"; 
-    }
-  }
 }
 
 async function executeAction(actionType, extra) {
@@ -946,6 +868,67 @@ function formatRupiah(num) {
   return "Rp " + n.toLocaleString('id-ID');
 }
 
+function parseCurrencyToNumber(str) {
+  if (!str) return 0;
+  const digits = str.toString().replace(/[^\d]/g, "");
+  return digits ? parseInt(digits, 10) : 0;
+}
+
+// Format satu baris rincian biaya termasuk kuantitas, dalam bentuk yang
+// tetap bisa dibaca manusia sekaligus bisa di-parse ulang oleh parseBiayaText().
+function formatBiayaLine(desc, qty, hargaSatuan) {
+  const q = Number(qty) || 0;
+  const h = Number(hargaSatuan) || 0;
+  const subtotal = q * h;
+  return `- ${desc.trim()} (Qty: ${q} x ${formatRupiah(h)}) = ${formatRupiah(subtotal)}`;
+}
+
+// Membaca kembali teks rincian biaya yang sudah tersimpan (baik format baru
+// yang mengandung kuantitas, maupun format lama tanpa kuantitas) menjadi
+// array baris {desc, qty, harga} agar bisa ditampilkan ulang di form edit
+// tanpa menghilangkan data yang sudah pernah diinput sebelumnya.
+function parseBiayaText(text) {
+  if (!text) return [];
+  const lines = text.toString().split(/\r?\n/);
+  const rows = [];
+  const reNew = /^-\s*(.+?)\s*\(Qty:\s*([\d.,]+)\s*x\s*Rp\s*([\d.,]+)\)\s*=\s*Rp\s*([\d.,]+)\s*$/i;
+  const reOld = /^-\s*(.+?):\s*Rp\s*([\d.,]+)\s*$/i;
+
+  lines.forEach(line => {
+    const trimmed = line.trim();
+    if (!trimmed) return;
+    if (trimmed.startsWith("[")) return; // label riwayat seperti [dd/mm/yyyy hh:mm:ss]
+    if (/^TOTAL/i.test(trimmed)) return; // baris TOTAL / TOTAL KESELURUHAN
+
+    let m = trimmed.match(reNew);
+    if (m) {
+      rows.push({ desc: m[1], qty: m[2].replace(/\./g, ""), harga: parseCurrencyToNumber(m[3]) });
+      return;
+    }
+    m = trimmed.match(reOld);
+    if (m) {
+      rows.push({ desc: m[1], qty: "1", harga: parseCurrencyToNumber(m[2]) });
+    }
+  });
+
+  return rows;
+}
+
+// Menyusun array baris {desc, qty, harga} menjadi teks rincian biaya final,
+// sekaligus menghitung ulang total keseluruhan. Dipakai bersama oleh form
+// Pending Finished maupun form Edit Rincian Biaya (Finished) supaya format
+// & perhitungan totalnya selalu konsisten.
+function buildBiayaText(rows) {
+  const validRows = (rows || []).filter(r => r.desc && r.desc.toString().trim() !== "" && Number(r.qty) > 0 && Number(r.harga) > 0);
+  if (validRows.length === 0) return { text: "", total: 0, validRows: [] };
+
+  const lines = validRows.map(r => formatBiayaLine(r.desc, r.qty, r.harga));
+  const total = validRows.reduce((sum, r) => sum + (Number(r.qty) * Number(r.harga)), 0);
+  lines.push(`TOTAL: ${formatRupiah(total)}`);
+
+  return { text: lines.join("\n"), total, validRows };
+}
+
 function resizeImageToBase64(file, maxWidth = 1280, quality = 0.75) {
   return new Promise((resolve, reject) => {
     if (!file.type.startsWith("image/")) { reject(new Error("Bukan file gambar")); return; }
@@ -1009,7 +992,7 @@ function removeSelectedPhoto(idx, containerId) {
 }
 
 function openPendingFinishedForm() {
-  biayaRows = [{ desc: "", harga: "" }];
+  biayaRows = [{ desc: "", qty: "1", harga: "" }];
   selectedPhotos = [];
   formModalTitle.textContent = "Selesaikan WO";
   renderPendingFinishedForm();
@@ -1017,7 +1000,7 @@ function openPendingFinishedForm() {
 }
 
 function renderPendingFinishedForm() {
-  const total = biayaRows.reduce((sum, r) => sum + (Number(r.harga) || 0), 0);
+  const total = biayaRows.reduce((sum, r) => sum + ((Number(r.qty) || 0) * (Number(r.harga) || 0)), 0);
   formModalBody.innerHTML = `
     <div class="font-label-md text-[10px] md:text-label-md text-outline uppercase tracking-wider mb-sm">Rincian Biaya Perbaikan</div>
     <div id="biaya-rows-container" class="flex flex-col gap-sm"></div>
@@ -1042,7 +1025,7 @@ function renderPendingFinishedForm() {
 
   renderBiayaRows();
   document.getElementById("btn-add-biaya-row").addEventListener("click", () => {
-    biayaRows.push({ desc: "", harga: "" });
+    biayaRows.push({ desc: "", qty: "1", harga: "" });
     renderBiayaRows();
   });
   document.getElementById("pf-photo-input").addEventListener("change", (e) => {
@@ -1053,12 +1036,13 @@ function renderPendingFinishedForm() {
 
 function renderBiayaRows() {
   const container = document.getElementById("biaya-rows-container");
-  // Update: Grid diubah agar responsif di HP (Description lebih luas).
   container.innerHTML = biayaRows.map((row, idx) => `
-    <div class="grid grid-cols-[1fr_90px_32px] sm:grid-cols-[1fr_140px_36px] gap-xs sm:gap-sm items-center">
+    <div class="grid grid-cols-[1fr_60px_90px_32px] sm:grid-cols-[1fr_80px_140px_36px] gap-xs sm:gap-sm items-center">
       <input type="text" placeholder="Deskripsi (mis. Ganti bearing)" value="${escapeHtml(row.desc)}" data-idx="${idx}" data-field="desc"
         class="px-sm md:px-md py-sm bg-surface rounded-lg border border-outline-variant focus:ring-primary focus:border-primary font-body-md text-[13px] md:text-body-md outline-none">
-      <input type="number" min="0" placeholder="Harga" value="${row.harga}" data-idx="${idx}" data-field="harga"
+      <input type="number" min="0" step="1" placeholder="Qty" value="${row.qty}" data-idx="${idx}" data-field="qty"
+        class="px-sm md:px-md py-sm bg-surface rounded-lg border border-outline-variant focus:ring-primary focus:border-primary font-body-md text-[13px] md:text-body-md outline-none">
+      <input type="number" min="0" placeholder="Harga Satuan" value="${row.harga}" data-idx="${idx}" data-field="harga"
         class="px-sm md:px-md py-sm bg-surface rounded-lg border border-outline-variant focus:ring-primary focus:border-primary font-body-md text-[13px] md:text-body-md outline-none">
       <button type="button" class="w-8 h-8 sm:w-9 sm:h-9 rounded-lg border border-error text-error bg-error-container/40 hover:bg-error-container transition-all flex justify-center items-center" ${biayaRows.length <= 1 ? "disabled" : ""} data-idx="${idx}">&times;</button>
     </div>
@@ -1069,7 +1053,7 @@ function renderBiayaRows() {
       const idx = Number(e.target.getAttribute("data-idx"));
       const field = e.target.getAttribute("data-field");
       biayaRows[idx][field] = e.target.value;
-      const total = biayaRows.reduce((sum, r) => sum + (Number(r.harga) || 0), 0);
+      const total = biayaRows.reduce((sum, r) => sum + ((Number(r.qty) || 0) * (Number(r.harga) || 0)), 0);
       const totalEl = document.getElementById("biaya-total-display");
       if (totalEl) totalEl.textContent = formatRupiah(total);
     });
@@ -1080,25 +1064,18 @@ function renderBiayaRows() {
       const idx = Number(e.target.getAttribute("data-idx"));
       biayaRows.splice(idx, 1);
       renderBiayaRows();
-      const total = biayaRows.reduce((sum, r) => sum + (Number(r.harga) || 0), 0);
+      const total = biayaRows.reduce((sum, r) => sum + ((Number(r.qty) || 0) * (Number(r.harga) || 0)), 0);
       document.getElementById("biaya-total-display").textContent = formatRupiah(total);
     });
   });
 }
 
 function submitPendingFinishedForm() {
-  const validRows = biayaRows.filter(r => r.desc.trim() !== "" && Number(r.harga) > 0);
+  const { text: biayaText, total, validRows } = buildBiayaText(biayaRows);
 
-  let biayaText = "";
-  let confirmMsg = "Kirim WO ini ke Pending Finished tanpa rincian biaya (biaya bisa dilengkapi nanti)?";
-
-  if (validRows.length > 0) {
-    const total = validRows.reduce((sum, r) => sum + Number(r.harga), 0);
-    const lines = validRows.map(r => `- ${r.desc.trim()}: ${formatRupiah(r.harga)}`);
-    lines.push(`TOTAL: ${formatRupiah(total)}`);
-    biayaText = lines.join("\n");
-    confirmMsg = `Kirim WO ini ke Pending Finished dengan total biaya ${formatRupiah(total)}?`;
-  }
+  const confirmMsg = validRows.length > 0
+    ? `Kirim WO ini ke Pending Finished dengan total biaya ${formatRupiah(total)}?`
+    : "Kirim WO ini ke Pending Finished tanpa rincian biaya (biaya bisa dilengkapi nanti)?";
 
   if (!confirm(confirmMsg)) return;
 
@@ -1106,22 +1083,29 @@ function submitPendingFinishedForm() {
 }
 
 // ============================================================================
-// EDIT RINCIAN BIAYA (status Finished) - rows editor seperti Pending Finished
+// EDIT RINCIAN BIAYA (status Finished) - baris rincian di-load ulang dari
+// data yang sudah tersimpan (termasuk yang diinput saat Pending Finished),
+// sehingga Maintenance bisa MENAMBAHKAN detail yang belum tercatat tanpa
+// menghilangkan rincian sebelumnya. Total akhir mengakumulasi seluruh baris.
 // ============================================================================
 function openEditBiayaForm() {
-  editBiayaRows = [{ desc: "", harga: "" }];
+  const parsed = parseBiayaText(targetCurrentBiaya);
+  editBiayaRows = parsed.length > 0
+    ? parsed.map(r => ({ desc: r.desc, qty: String(r.qty), harga: String(r.harga) }))
+    : [{ desc: "", qty: "1", harga: "" }];
+
   formModalTitle.textContent = "Edit Rincian Biaya";
   renderEditBiayaForm();
   formModalOverlay.style.display = "flex";
 }
 
 function renderEditBiayaForm() {
-  const total = editBiayaRows.reduce((sum, r) => sum + (Number(r.harga) || 0), 0);
+  const total = editBiayaRows.reduce((sum, r) => sum + ((Number(r.qty) || 0) * (Number(r.harga) || 0)), 0);
   formModalBody.innerHTML = `
-    <div class="font-label-md text-[10px] md:text-label-md text-outline uppercase tracking-wider mb-xs">Rincian Biaya Tersimpan Saat Ini</div>
-    <div class="mb-md p-sm md:p-md bg-surface-container-low rounded-lg font-body-md text-[12px] md:text-body-md text-on-surface-variant whitespace-pre-wrap max-h-[140px] overflow-y-auto border border-outline-variant/30">${escapeHtml(targetCurrentBiaya) || '-'}</div>
     <p class="font-body-md text-[12px] md:text-body-md text-on-surface-variant mb-md">
-      Susun ulang rincian biaya di bawah ini. Rincian baru ini akan MENGGANTIKAN sepenuhnya rincian biaya yang tersimpan di atas.
+      Rincian di bawah ini sudah memuat item yang pernah diinput sebelumnya (termasuk saat Pending Finished).
+      Anda bisa mengubah, menghapus, atau menambahkan baris baru. Total akhir akan mengakumulasi seluruh baris
+      yang ada di bawah ini.
     </p>
 
     <div class="font-label-md text-[10px] md:text-label-md text-outline uppercase tracking-wider mb-sm">Rincian Biaya Perbaikan</div>
@@ -1141,7 +1125,7 @@ function renderEditBiayaForm() {
 
   renderEditBiayaRows();
   document.getElementById("btn-add-edit-biaya-row").addEventListener("click", () => {
-    editBiayaRows.push({ desc: "", harga: "" });
+    editBiayaRows.push({ desc: "", qty: "1", harga: "" });
     renderEditBiayaRows();
   });
   document.getElementById("btn-submit-edit-biaya").addEventListener("click", submitEditBiayaForm);
@@ -1150,10 +1134,12 @@ function renderEditBiayaForm() {
 function renderEditBiayaRows() {
   const container = document.getElementById("edit-biaya-rows-container");
   container.innerHTML = editBiayaRows.map((row, idx) => `
-    <div class="grid grid-cols-[1fr_90px_32px] sm:grid-cols-[1fr_140px_36px] gap-xs sm:gap-sm items-center">
+    <div class="grid grid-cols-[1fr_60px_90px_32px] sm:grid-cols-[1fr_80px_140px_36px] gap-xs sm:gap-sm items-center">
       <input type="text" placeholder="Deskripsi (mis. Ganti bearing)" value="${escapeHtml(row.desc)}" data-idx="${idx}" data-field="desc"
         class="px-sm md:px-md py-sm bg-surface rounded-lg border border-outline-variant focus:ring-primary focus:border-primary font-body-md text-[13px] md:text-body-md outline-none">
-      <input type="number" min="0" placeholder="Harga" value="${row.harga}" data-idx="${idx}" data-field="harga"
+      <input type="number" min="0" step="1" placeholder="Qty" value="${row.qty}" data-idx="${idx}" data-field="qty"
+        class="px-sm md:px-md py-sm bg-surface rounded-lg border border-outline-variant focus:ring-primary focus:border-primary font-body-md text-[13px] md:text-body-md outline-none">
+      <input type="number" min="0" placeholder="Harga Satuan" value="${row.harga}" data-idx="${idx}" data-field="harga"
         class="px-sm md:px-md py-sm bg-surface rounded-lg border border-outline-variant focus:ring-primary focus:border-primary font-body-md text-[13px] md:text-body-md outline-none">
       <button type="button" class="w-8 h-8 sm:w-9 sm:h-9 rounded-lg border border-error text-error bg-error-container/40 hover:bg-error-container transition-all flex justify-center items-center" ${editBiayaRows.length <= 1 ? "disabled" : ""} data-idx="${idx}">&times;</button>
     </div>
@@ -1164,7 +1150,7 @@ function renderEditBiayaRows() {
       const idx = Number(e.target.getAttribute("data-idx"));
       const field = e.target.getAttribute("data-field");
       editBiayaRows[idx][field] = e.target.value;
-      const total = editBiayaRows.reduce((sum, r) => sum + (Number(r.harga) || 0), 0);
+      const total = editBiayaRows.reduce((sum, r) => sum + ((Number(r.qty) || 0) * (Number(r.harga) || 0)), 0);
       const totalEl = document.getElementById("edit-biaya-total-display");
       if (totalEl) totalEl.textContent = formatRupiah(total);
     });
@@ -1175,25 +1161,21 @@ function renderEditBiayaRows() {
       const idx = Number(e.target.getAttribute("data-idx"));
       editBiayaRows.splice(idx, 1);
       renderEditBiayaRows();
-      const total = editBiayaRows.reduce((sum, r) => sum + (Number(r.harga) || 0), 0);
+      const total = editBiayaRows.reduce((sum, r) => sum + ((Number(r.qty) || 0) * (Number(r.harga) || 0)), 0);
       document.getElementById("edit-biaya-total-display").textContent = formatRupiah(total);
     });
   });
 }
 
 function submitEditBiayaForm() {
-  const validRows = editBiayaRows.filter(r => r.desc.trim() !== "" && Number(r.harga) > 0);
+  const { text: biayaText, total, validRows } = buildBiayaText(editBiayaRows);
+
   if (validRows.length === 0) {
-    alert("Mohon isi minimal satu baris rincian biaya dengan deskripsi dan harga yang valid.");
+    alert("Mohon isi minimal satu baris rincian biaya dengan deskripsi, kuantitas, dan harga yang valid.");
     return;
   }
 
-  const total = validRows.reduce((sum, r) => sum + Number(r.harga), 0);
-  const lines = validRows.map(r => `- ${r.desc.trim()}: ${formatRupiah(r.harga)}`);
-  lines.push(`TOTAL: ${formatRupiah(total)}`);
-  const biayaText = lines.join("\n");
-
-  if (!confirm(`Simpan rincian biaya baru dengan total ${formatRupiah(total)}? Rincian biaya sebelumnya akan digantikan sepenuhnya.`)) return;
+  if (!confirm(`Simpan rincian biaya dengan total keseluruhan ${formatRupiah(total)}? Rincian ini mengakumulasi seluruh item (termasuk yang sudah ada sebelumnya) yang tampil pada form.`)) return;
 
   executeAction("update_biaya_finished", { biayaWo: biayaText });
 }
