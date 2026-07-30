@@ -1026,13 +1026,17 @@ function loadImageAsDataUrl(src) {
 }
 
 function drawPdfCheckbox(doc, x, y, checked, size = 3.2) {
+  // Paksa kotak checklist selalu hitam dan tegas, terlepas dari style
+  // garis yang sebelumnya digunakan oleh bagian PDF lain.
+  doc.setDrawColor(0, 0, 0);
+  doc.setLineWidth(0.35);
   doc.rect(x, y, size, size);
   if (checked) {
-    doc.setLineWidth(0.45);
+    doc.setLineWidth(0.5);
     doc.line(x + 0.6, y + 1.7, x + 1.35, y + 2.55);
     doc.line(x + 1.35, y + 2.55, x + 2.75, y + 0.7);
-    doc.setLineWidth(0.2);
   }
+  doc.setLineWidth(0.2);
 }
 
 function drawPdfText(doc, text, x, y, options = {}) {
@@ -1289,20 +1293,38 @@ async function exportTicketToPDF() {
   const cHeadH = 8;
   const cBodyH = (checklistH - cTitleH - cHeadH) / 2;
   const cCols = [8, 52, 30, 30];
+
+  // 1) Gambar seluruh warna latar lebih dulu. Jika fill dilakukan setelah
+  // garis, sebagian garis bisa tertutup dan terlihat kabur/putus di PDF.
   doc.setFillColor(...yellow);
   doc.rect(cx, y, checklistW, cTitleH, "F");
   doc.rect(cx, y + cTitleH, checklistW, cHeadH, "F");
+  for (let idx = 0; idx < 2; idx++) {
+    const rowY = y + cTitleH + cHeadH + idx * cBodyH;
+    doc.rect(cx, rowY, cCols[0] + cCols[1], cBodyH, "F");
+  }
+
+  // 2) Setelah semua fill selesai, gambar ulang seluruh grid dengan warna
+  // hitam pekat dan ketebalan yang lebih jelas.
+  doc.setDrawColor(0, 0, 0);
+  doc.setLineWidth(0.35);
+  doc.rect(cx, y, checklistW, checklistH);
   doc.line(cx, y + cTitleH, cx + checklistW, y + cTitleH);
   doc.line(cx, y + cTitleH + cHeadH, cx + checklistW, y + cTitleH + cHeadH);
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(7);
-  doc.text("MAINTENANCE CLEARANCE CHECKLIST", cx + checklistW / 2, y + 4.8, { align: "center" });
+  doc.line(cx, y + cTitleH + cHeadH + cBodyH, cx + checklistW, y + cTitleH + cHeadH + cBodyH);
 
   let colX = cx;
   cCols.slice(0, -1).forEach((w) => {
     colX += w;
     doc.line(colX, y + cTitleH, colX, y + checklistH);
   });
+
+  // 3) Isi teks dan checklist setelah grid selesai. Kotak checklist memiliki
+  // style garis hitamnya sendiri melalui drawPdfCheckbox().
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(7);
+  doc.text("MAINTENANCE CLEARANCE CHECKLIST", cx + checklistW / 2, y + 4.8, { align: "center" });
+
   drawPdfCellText(doc, "No", cx, y + cTitleH, cCols[0], cHeadH, { fontSize: 5.8, fontStyle: "bold", align: "center" });
   drawPdfCellText(doc, "Kondisi Area Kerja", cx + cCols[0], y + cTitleH, cCols[1], cHeadH, { fontSize: 5.8, fontStyle: "bold", align: "center" });
   drawPdfCellText(doc, "MTC (Nama/Prf/Tgl)", cx + cCols[0] + cCols[1], y + cTitleH, cCols[2], cHeadH, { fontSize: 5.4, fontStyle: "bold", align: "center" });
@@ -1314,15 +1336,16 @@ async function exportTicketToPDF() {
   ];
   checklistRows.forEach((label, idx) => {
     const ry = y + cTitleH + cHeadH + idx * cBodyH;
-    if (idx > 0) doc.line(cx, ry, cx + checklistW, ry);
-    doc.setFillColor(...yellow);
-    doc.rect(cx, ry, cCols[0] + cCols[1], cBodyH, "F");
     drawPdfCellText(doc, `${idx + 1}.`, cx, ry, cCols[0], cBodyH, { fontSize: 6.2, align: "center" });
     drawPdfCellText(doc, label, cx + cCols[0], ry, cCols[1], cBodyH, { fontSize: 5.7 });
     // Checklist bersifat statis: MTC dan User selalu tercentang.
     drawPdfCheckbox(doc, cx + cCols[0] + cCols[1] + (cCols[2] - 3.2) / 2, ry + (cBodyH - 3.2) / 2, true);
     drawPdfCheckbox(doc, cx + cCols[0] + cCols[1] + cCols[2] + (cCols[3] - 3.2) / 2, ry + (cBodyH - 3.2) / 2, true);
   });
+
+  // Kembalikan ketebalan standar untuk bagian tabel berikutnya.
+  doc.setDrawColor(...black);
+  doc.setLineWidth(0.2);
 
   // -------------------- MATERIAL / LABOUR --------------------
   y += checklistH;
