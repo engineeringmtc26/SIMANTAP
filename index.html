@@ -1245,12 +1245,22 @@ async function exportTicketToPDF() {
   y += equipH;
   const requestH = 43;
   const requestHeaderH = 7;
-  doc.rect(x0, y, formW, requestH);
-  doc.line(x0 + 100, y, x0 + 100, y + requestH);
+
+  // Latar header harus digambar sebelum grid. Pada versi sebelumnya,
+  // fill abu-abu menutup garis pembagi yang sudah digambar lebih dulu.
   doc.setFillColor(...lightGray);
   doc.rect(x0, y, 100, requestHeaderH, "F");
   doc.rect(x0 + 100, y, 100, requestHeaderH, "F");
+
+  // Garis luar tetap normal, sedangkan garis pembagi tengah dan batas
+  // bawah header dibuat hitam tebal agar kedua judul benar-benar terpisah.
+  doc.setDrawColor(0, 0, 0);
+  doc.setLineWidth(0.25);
+  doc.rect(x0, y, formW, requestH);
+  doc.setLineWidth(0.55);
+  doc.line(x0 + 100, y, x0 + 100, y + requestH);
   doc.line(x0, y + requestHeaderH, x0 + formW, y + requestHeaderH);
+  doc.setLineWidth(0.2);
   doc.setFont("helvetica", "bolditalic");
   doc.setFontSize(6.7);
   doc.text("Permintaan Pekerjaan / Request Work", x0 + 50, y + 4.8, { align: "center" });
@@ -1261,7 +1271,10 @@ async function exportTicketToPDF() {
   // -------------------- PRIORITY / CHECKLIST --------------------
   y += requestH;
   const checklistH = 31;
-  const priorityW = 80;
+
+  // Tepatkan awal checklist pada garis tengah formulir (x0 + 100).
+  // Dengan begitu sisi kiri checklist sejajar dengan pembagi Request Work.
+  const priorityW = 100;
   const checklistW = formW - priorityW;
   doc.rect(x0, y, formW, checklistH);
   doc.line(x0 + priorityW, y, x0 + priorityW, y + checklistH);
@@ -1283,19 +1296,20 @@ async function exportTicketToPDF() {
   priorities.forEach((row, idx) => {
     const ry = y + priorityHeaderH + idx * prRowH;
     if (idx > 0) doc.line(x0, ry, x0 + priorityW, ry);
-    doc.line(x0 + 65, ry, x0 + 65, ry + prRowH);
-    drawPdfCellText(doc, row[0], x0, ry, 65, prRowH, { fontSize: 6.6 });
-    drawPdfCheckbox(doc, x0 + 70.5, ry + 2.4, data.priority.includes(row[1]) || data.priority.includes(row[2]));
+    doc.line(x0 + 84, ry, x0 + 84, ry + prRowH);
+    drawPdfCellText(doc, row[0], x0, ry, 84, prRowH, { fontSize: 6.6 });
+    drawPdfCheckbox(doc, x0 + 90.4, ry + (prRowH - 3.2) / 2, data.priority.includes(row[1]) || data.priority.includes(row[2]));
   });
 
   const cx = x0 + priorityW;
   const cTitleH = 7;
   const cHeadH = 8;
   const cBodyH = (checklistH - cTitleH - cHeadH) / 2;
-  const cCols = [8, 52, 30, 30];
 
-  // 1) Gambar seluruh warna latar lebih dulu. Jika fill dilakukan setelah
-  // garis, sebagian garis bisa tertutup dan terlihat kabur/putus di PDF.
+  // Checklist sekarang menempati tepat setengah kanan formulir (100 mm).
+  const cCols = [7, 43, 25, 25];
+
+  // 1) Gambar seluruh warna latar lebih dulu.
   doc.setFillColor(...yellow);
   doc.rect(cx, y, checklistW, cTitleH, "F");
   doc.rect(cx, y + cTitleH, checklistW, cHeadH, "F");
@@ -1304,10 +1318,33 @@ async function exportTicketToPDF() {
     doc.rect(cx, rowY, cCols[0] + cCols[1], cBodyH, "F");
   }
 
-  // 2) Setelah semua fill selesai, gambar ulang seluruh grid dengan warna
-  // hitam pekat dan ketebalan yang lebih jelas.
+  // 2) Tulis isi tabel dan checklist.
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(7);
+  doc.text("MAINTENANCE CLEARANCE CHECKLIST", cx + checklistW / 2, y + 4.8, { align: "center" });
+
+  drawPdfCellText(doc, "No", cx, y + cTitleH, cCols[0], cHeadH, { fontSize: 5.6, fontStyle: "bold", align: "center" });
+  drawPdfCellText(doc, "Kondisi Area Kerja", cx + cCols[0], y + cTitleH, cCols[1], cHeadH, { fontSize: 5.6, fontStyle: "bold", align: "center" });
+  drawPdfCellText(doc, "MTC (Nama/Prf/Tgl)", cx + cCols[0] + cCols[1], y + cTitleH, cCols[2], cHeadH, { fontSize: 4.9, fontStyle: "bold", align: "center" });
+  drawPdfCellText(doc, "User (Nama/Prf/Tgl)", cx + cCols[0] + cCols[1] + cCols[2], y + cTitleH, cCols[3], cHeadH, { fontSize: 4.9, fontStyle: "bold", align: "center" });
+
+  const checklistRows = [
+    "Area bersih",
+    "Tidak ada tools dan/atau material yang tertinggal di area kerja"
+  ];
+  checklistRows.forEach((label, idx) => {
+    const ry = y + cTitleH + cHeadH + idx * cBodyH;
+    drawPdfCellText(doc, `${idx + 1}.`, cx, ry, cCols[0], cBodyH, { fontSize: 6, align: "center" });
+    drawPdfCellText(doc, label, cx + cCols[0], ry, cCols[1], cBodyH, { fontSize: 5.15 });
+    drawPdfCheckbox(doc, cx + cCols[0] + cCols[1] + (cCols[2] - 3.2) / 2, ry + (cBodyH - 3.2) / 2, true);
+    drawPdfCheckbox(doc, cx + cCols[0] + cCols[1] + cCols[2] + (cCols[3] - 3.2) / 2, ry + (cBodyH - 3.2) / 2, true);
+  });
+
+  // 3) Grid digambar PALING AKHIR supaya tidak pernah tertutup fill maupun
+  // elemen isi. Ketebalan 0,65 mm sengaja dipakai agar tetap hitam pekat
+  // dan jelas saat PDF dilihat pada zoom rendah atau dicetak.
   doc.setDrawColor(0, 0, 0);
-  doc.setLineWidth(0.35);
+  doc.setLineWidth(0.65);
   doc.rect(cx, y, checklistW, checklistH);
   doc.line(cx, y + cTitleH, cx + checklistW, y + cTitleH);
   doc.line(cx, y + cTitleH + cHeadH, cx + checklistW, y + cTitleH + cHeadH);
@@ -1319,29 +1356,8 @@ async function exportTicketToPDF() {
     doc.line(colX, y + cTitleH, colX, y + checklistH);
   });
 
-  // 3) Isi teks dan checklist setelah grid selesai. Kotak checklist memiliki
-  // style garis hitamnya sendiri melalui drawPdfCheckbox().
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(7);
-  doc.text("MAINTENANCE CLEARANCE CHECKLIST", cx + checklistW / 2, y + 4.8, { align: "center" });
-
-  drawPdfCellText(doc, "No", cx, y + cTitleH, cCols[0], cHeadH, { fontSize: 5.8, fontStyle: "bold", align: "center" });
-  drawPdfCellText(doc, "Kondisi Area Kerja", cx + cCols[0], y + cTitleH, cCols[1], cHeadH, { fontSize: 5.8, fontStyle: "bold", align: "center" });
-  drawPdfCellText(doc, "MTC (Nama/Prf/Tgl)", cx + cCols[0] + cCols[1], y + cTitleH, cCols[2], cHeadH, { fontSize: 5.4, fontStyle: "bold", align: "center" });
-  drawPdfCellText(doc, "User (Nama/Prf/Tgl)", cx + cCols[0] + cCols[1] + cCols[2], y + cTitleH, cCols[3], cHeadH, { fontSize: 5.4, fontStyle: "bold", align: "center" });
-
-  const checklistRows = [
-    "Area bersih",
-    "Tidak ada tools dan/atau material yang tertinggal di area kerja"
-  ];
-  checklistRows.forEach((label, idx) => {
-    const ry = y + cTitleH + cHeadH + idx * cBodyH;
-    drawPdfCellText(doc, `${idx + 1}.`, cx, ry, cCols[0], cBodyH, { fontSize: 6.2, align: "center" });
-    drawPdfCellText(doc, label, cx + cCols[0], ry, cCols[1], cBodyH, { fontSize: 5.7 });
-    // Checklist bersifat statis: MTC dan User selalu tercentang.
-    drawPdfCheckbox(doc, cx + cCols[0] + cCols[1] + (cCols[2] - 3.2) / 2, ry + (cBodyH - 3.2) / 2, true);
-    drawPdfCheckbox(doc, cx + cCols[0] + cCols[1] + cCols[2] + (cCols[3] - 3.2) / 2, ry + (cBodyH - 3.2) / 2, true);
-  });
+  // Tegaskan juga garis pertemuan dengan tabel Priority di garis tengah.
+  doc.line(cx, y, cx, y + checklistH);
 
   // Kembalikan ketebalan standar untuk bagian tabel berikutnya.
   doc.setDrawColor(...black);
@@ -1354,7 +1370,10 @@ async function exportTicketToPDF() {
   const materialBodyH = Math.max(29, Math.min(66, labourLineCount * 4.3 + 5));
   const materialH = materialHeaderH + materialBodyH;
   const materialRowH = materialBodyH / 4;
-  const materialCols = [70, 20, 36, 34, 40];
+  // Dua kolom pertama tepat 100 mm. Dengan demikian kolom Pekerja
+  // dimulai pada garis tengah yang sama dengan Request Work dan Checklist.
+  // Pekerja, Jam/Hour, dan Remarks dibuat sedikit lebih ramping di sisi kanan.
+  const materialCols = [80, 20, 34, 32, 34];
   doc.rect(x0, y, formW, materialH);
   doc.setFillColor(...lightGray);
   doc.rect(x0, y, formW, materialHeaderH, "F");
