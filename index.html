@@ -1025,9 +1025,9 @@ function loadImageAsDataUrl(src) {
   });
 }
 
-// Semua garis struktur formulir memakai ukuran yang sama agar tidak ada
-// tabel yang terlihat lebih tebal atau lebih tipis dari bagian lainnya.
-const PDF_GRID_LINE_WIDTH = 0.30;
+// Semua garis struktur formulir memakai ukuran yang sama. Setiap segmen
+// grid hanya digambar satu kali agar tidak terjadi penumpukan stroke.
+const PDF_GRID_LINE_WIDTH = 0.24;
 const PDF_CHECKMARK_LINE_WIDTH = 0.42;
 
 function applyPdfGridStyle(doc) {
@@ -1162,7 +1162,10 @@ async function exportTicketToPDF() {
   const logoW = 40;
   const titleW = 100;
   const metaW = 60;
-  doc.rect(x0, y0, formW, headerH);
+  // Border luar formulir digambar satu kali di tahap akhir. Di setiap
+  // bagian, hanya garis pembatas internal/bawah yang digambar agar tidak
+  // terjadi stroke bertumpuk dan ketebalan grid tetap seragam.
+  doc.line(x0, y0 + headerH, x0 + formW, y0 + headerH);
   doc.line(x0 + logoW, y0, x0 + logoW, y0 + headerH);
   doc.line(x0 + logoW + titleW, y0, x0 + logoW + titleW, y0 + headerH);
 
@@ -1210,7 +1213,7 @@ async function exportTicketToPDF() {
   // -------------------- INFO --------------------
   let y = y0 + headerH;
   const infoH = 18;
-  doc.rect(x0, y, formW, infoH);
+  doc.line(x0, y + infoH, x0 + formW, y + infoH);
   drawPdfLabelValue(doc, "Department / Section :", data.department, x0 + 2, y + 5.2, 31, 88);
 
   doc.setFontSize(6.5);
@@ -1236,7 +1239,6 @@ async function exportTicketToPDF() {
   // -------------------- EQUIPMENT / ACCEPTANCE --------------------
   y += infoH;
   const equipH = 18;
-  doc.rect(x0, y, formW, equipH);
   doc.line(x0 + 80, y, x0 + 80, y + equipH);
   doc.line(x0 + 120, y, x0 + 120, y + equipH);
   doc.line(x0 + 140, y, x0 + 140, y + equipH);
@@ -1256,17 +1258,17 @@ async function exportTicketToPDF() {
 
   // -------------------- REQUEST / WORK DONE --------------------
   y += equipH;
-  const sharedCenterStartY = y;
   const requestH = 43;
   const requestHeaderH = 7;
-  doc.rect(x0, y, formW, requestH);
   doc.setFillColor(...lightGray);
   doc.rect(x0, y, halfFormW, requestHeaderH, "F");
   doc.rect(centerX, y, halfFormW, requestHeaderH, "F");
-  // Garis header mengikuti ketebalan grid standar. Garis tengah kontinu
-  // digambar sekali pada tahap akhir agar tidak terjadi penumpukan stroke.
+  // Semua garis digambar setelah fill supaya warna latar tidak menutup
+  // setengah stroke pada batas sel.
   applyPdfGridStyle(doc);
+  doc.line(x0, y, x0 + formW, y);
   doc.line(x0, y + requestHeaderH, x0 + formW, y + requestHeaderH);
+  doc.line(centerX, y, centerX, y + requestH);
   doc.setFont("helvetica", "bolditalic");
   doc.setFontSize(6.7);
   doc.text("Permintaan Pekerjaan / Request Work", x0 + halfFormW / 2, y + 4.8, { align: "center" });
@@ -1280,8 +1282,6 @@ async function exportTicketToPDF() {
   // Checklist dimulai tepat pada poros tengah yang sama dengan Request/Repair.
   const priorityW = centerX - x0;
   const checklistW = (x0 + formW) - centerX;
-  doc.rect(x0, y, formW, checklistH);
-  doc.line(x0 + priorityW, y, x0 + priorityW, y + checklistH);
 
   const priorityHeaderH = 7;
   doc.setFillColor(...lightGray);
@@ -1322,6 +1322,12 @@ async function exportTicketToPDF() {
     doc.rect(cx, rowY, cCols[0] + cCols[1], cBodyH, "F");
   }
 
+  // Batas atas dan poros tengah dimiliki bagian ini. Batas bawah akan
+  // digambar sekali oleh tabel material setelah fill header material.
+  applyPdfGridStyle(doc);
+  doc.line(x0, y, x0 + formW, y);
+  doc.line(centerX, y, centerX, y + checklistH);
+
   // 2) Isi teks dan checklist. Grid hanya digambar satu kali pada tahap
   // akhir supaya tidak terjadi penumpukan garis yang membuat tabel kuning
   // tampak lebih tebal daripada tabel lainnya.
@@ -1347,10 +1353,10 @@ async function exportTicketToPDF() {
     drawPdfCheckbox(doc, cx + cCols[0] + cCols[1] + cCols[2] + (cCols[3] - 3.2) / 2, ry + (cBodyH - 3.2) / 2, true);
   });
 
-  // Gambar grid checklist satu kali dan paling akhir. Ketebalannya sama
-  // persis dengan seluruh tabel lain pada formulir.
+  // Gambar hanya garis internal checklist. Garis luar kiri/kanan/atas/bawah
+  // sudah dimiliki oleh poros tengah, border formulir, dan batas antarseksi,
+  // sehingga tidak boleh digambar ulang di sini.
   applyPdfGridStyle(doc);
-  doc.rect(cx, y, checklistW, checklistH);
   doc.line(cx, y + cTitleH, cx + checklistW, y + cTitleH);
   doc.line(cx, y + cTitleH + cHeadH, cx + checklistW, y + cTitleH + cHeadH);
   doc.line(cx, y + cTitleH + cHeadH + cBodyH, cx + checklistW, y + cTitleH + cHeadH + cBodyH);
@@ -1375,10 +1381,12 @@ async function exportTicketToPDF() {
   if (Math.abs(materialLeftW - halfFormW) > 0.001) {
     throw new Error("Lebar tabel material tidak sejajar dengan garis tengah formulir.");
   }
-  doc.rect(x0, y, formW, materialH);
   doc.setFillColor(...lightGray);
   doc.rect(x0, y, formW, materialHeaderH, "F");
+  applyPdfGridStyle(doc);
+  doc.line(x0, y, x0 + formW, y);
   doc.line(x0, y + materialHeaderH, x0 + formW, y + materialHeaderH);
+  doc.line(x0, y + materialH, x0 + formW, y + materialH);
 
   let mx = x0;
   materialCols.slice(0, -1).forEach(w => {
@@ -1425,18 +1433,11 @@ async function exportTicketToPDF() {
   drawPdfCellText(doc, data.startDisplay || "-", hourX, materialBodyY, materialCols[3] / 2, materialBodyH, { fontSize: 5.2, align: "center" });
   drawPdfCellText(doc, data.finishDisplay || "-", hourX + materialCols[3] / 2, materialBodyY, materialCols[3] / 2, materialBodyH, { fontSize: 5.2, align: "center" });
 
-  // Gambar ulang satu garis tengah kontinu paling akhir. Garis ini menjadi
-  // acuan visual yang sama dari Request/Repair sampai tabel Material/Labour.
-  const sharedCenterEndY = y + materialH;
-  applyPdfGridStyle(doc);
-  doc.line(centerX, sharedCenterStartY, centerX, sharedCenterEndY);
-
   // -------------------- SIGNATURES --------------------
   y += materialH;
   const signatureTopH = 33;
   const signatureBottomH = 22;
   const sigW = formW / 4;
-  doc.rect(x0, y, formW, signatureTopH + signatureBottomH);
   for (let i = 1; i < 4; i++) doc.line(x0 + i * sigW, y, x0 + i * sigW, y + signatureTopH + signatureBottomH);
   doc.line(x0, y + signatureTopH, x0 + formW, y + signatureTopH);
 
@@ -1462,7 +1463,9 @@ async function exportTicketToPDF() {
   const grandTotal = grandTotalMatch ? grandTotalMatch[1] : "";
   drawPdfCellText(doc, `Total Rincian/Total Breakdown :\n${grandTotal}\nJam/Hours (S) :\n${data.duration || "-"}`, x0 + sigW * 3, y + signatureTopH, sigW, signatureBottomH, { fontSize: 5.7 });
 
-  // Border terluar memakai ketebalan yang sama dengan seluruh grid.
+  // Border luar digambar tepat satu kali. Semua batas antarseksi di atas
+  // juga hanya digambar satu kali, sehingga tidak ada garis yang tampak
+  // lebih tebal akibat dua atau tiga stroke pada koordinat yang sama.
   applyPdfGridStyle(doc);
   doc.rect(x0, y0, formW, y + signatureTopH + signatureBottomH - y0);
 
