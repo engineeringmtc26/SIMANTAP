@@ -1050,11 +1050,16 @@ function drawPdfCheckbox(doc, x, y, checked, size = 3.2) {
 }
 
 function drawPdfSignatureCheckbox(doc, x, y, w, h) {
-  // Ceklis biasa dalam kotak, diposisikan tepat di tengah area tanda tangan.
-  const size = 4.2;
-  const boxX = x + (w - size) / 2;
-  const boxY = y + (h - size) / 2;
-  drawPdfCheckbox(doc, boxX, boxY, true, size);
+  // Khusus area tanda tangan: tampilkan ceklis saja tanpa kotak.
+  const cx = x + w / 2;
+  const cy = y + h / 2;
+  doc.setDrawColor(0, 0, 0);
+  doc.setLineWidth(PDF_CHECKMARK_LINE_WIDTH + 0.06);
+  if (typeof doc.setLineCap === "function") doc.setLineCap("round");
+  if (typeof doc.setLineJoin === "function") doc.setLineJoin("round");
+  doc.line(cx - 1.8, cy + 0.4, cx - 0.5, cy + 1.9);
+  doc.line(cx - 0.5, cy + 1.9, cx + 2.2, cy - 1.6);
+  applyPdfGridStyle(doc);
 }
 
 function drawPdfText(doc, text, x, y, options = {}) {
