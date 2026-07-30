@@ -334,6 +334,7 @@ let targetRequestId = "";
 let targetItemCategory = "";
 let targetItemStatus = "";
 let targetCurrentBiaya = "";
+let targetCurrentWorkers = "";
 
 // Konfigurasi identitas formulir PDF. Nilai ini akan ditimpa oleh
 // pdfConfig dari backend apabila tersedia.
@@ -629,6 +630,34 @@ function escapeHtml(str) {
   return div.innerHTML;
 }
 
+// Mencari kolom nama pekerja secara ketat supaya tidak salah membaca
+// kolom "pekerjaan" sebagai kolom "pekerja".
+function normalizeWorkerHeader(value) {
+  return (value || "")
+    .toString()
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+}
+
+function isWorkerHeader(value) {
+  const key = normalizeWorkerHeader(value);
+  const exact = [
+    "nama pekerja", "pekerja", "labour", "labor", "worker", "worker names",
+    "nama teknisi", "teknisi", "nama pelaksana", "pelaksana"
+  ];
+  return exact.includes(key)
+    || key.includes("nama pekerja")
+    || key.includes("nama teknisi")
+    || key.includes("worker names");
+}
+
+function findWorkerColumnIndex(headers) {
+  return (headers || []).findIndex(isWorkerHeader);
+}
+
 // ============================================================================
 // LOGIKA MODAL & ACTION
 // ============================================================================
@@ -647,6 +676,9 @@ function showModal(originalIndex, reqId, itemCat, itemStat) {
 
   const biayaColIdx = globalHeaders.findIndex(h => h && h.toLowerCase().includes("biaya"));
   targetCurrentBiaya = biayaColIdx !== -1 ? (rowData[biayaColIdx] || "") : "";
+
+  const workerColIdx = findWorkerColumnIndex(globalHeaders);
+  targetCurrentWorkers = workerColIdx !== -1 ? (rowData[workerColIdx] || "") : "";
 
   let html = "";
 
@@ -667,7 +699,7 @@ function showModal(originalIndex, reqId, itemCat, itemStat) {
   if (userRole === "maintenance" && targetItemStatus === "pending") {
     html += `
       <div class="mt-md md:mt-lg pt-md border-t border-dashed border-outline-variant flex flex-col sm:flex-row gap-sm" id="action-footer">
-        <button class="flex-1 w-full px-md py-sm rounded-lg font-body-md text-body-md font-semibold text-on-primary bg-secondary hover:opacity-90 transition-opacity" onclick="executeAction('approved')">Terima (Approve)</button>
+        <button class="flex-1 w-full px-md py-sm rounded-lg font-body-md text-body-md font-semibold text-on-primary bg-secondary hover:opacity-90 transition-opacity" onclick="openApproveForm()">Terima (Approve)</button>
         <button class="flex-1 w-full px-md py-sm rounded-lg font-body-md text-body-md font-semibold text-on-error bg-error hover:opacity-90 transition-opacity" onclick="executeAction('rejected')">Tolak (Reject)</button>
       </div>
       <div id="action-msg" class="text-center mt-sm font-label-md text-label-md text-outline"></div>
@@ -676,7 +708,16 @@ function showModal(originalIndex, reqId, itemCat, itemStat) {
   else if (userRole === "maintenance" && targetItemStatus === "approved") {
     html += `
       <div class="mt-md md:mt-lg pt-md border-t border-dashed border-outline-variant flex flex-col sm:flex-row gap-sm" id="action-footer">
+        <button class="flex-1 w-full px-md py-sm rounded-lg font-body-md text-body-md font-semibold text-primary border border-primary hover:bg-primary hover:text-on-primary transition-all" onclick="openEditWorkersForm()">Edit Nama Pekerja</button>
         <button class="flex-1 w-full px-md py-sm rounded-lg font-body-md text-body-md font-semibold text-on-primary bg-primary hover:opacity-90 transition-opacity" onclick="openPendingFinishedForm()">Selesaikan WO (Kirim ke Pending Finished)</button>
+      </div>
+      <div id="action-msg" class="text-center mt-sm font-label-md text-label-md text-outline"></div>
+    `;
+  }
+  else if (userRole === "maintenance" && targetItemStatus === "pending_finished") {
+    html += `
+      <div class="mt-md md:mt-lg pt-md border-t border-dashed border-outline-variant flex flex-col sm:flex-row gap-sm" id="action-footer">
+        <button class="flex-1 w-full px-md py-sm rounded-lg font-body-md text-body-md font-semibold text-primary border border-primary hover:bg-primary hover:text-on-primary transition-all" onclick="openEditWorkersForm()">Edit Nama Pekerja</button>
       </div>
       <div id="action-msg" class="text-center mt-sm font-label-md text-label-md text-outline"></div>
     `;
@@ -692,9 +733,10 @@ function showModal(originalIndex, reqId, itemCat, itemStat) {
   }
   else if (userRole === "maintenance" && targetItemStatus === "finished") {
     html += `
-      <div class="mt-md md:mt-lg pt-md border-t border-dashed border-outline-variant flex flex-col sm:flex-row gap-sm" id="action-footer">
-        <button class="flex-1 w-full px-md py-sm rounded-lg font-body-md text-body-md font-semibold text-on-primary bg-primary hover:opacity-90 transition-opacity" onclick="openEditBiayaForm()">Edit Rincian Biaya</button>
-        <button class="flex-1 w-full px-md py-sm rounded-lg font-body-md text-body-md font-semibold text-primary border border-primary hover:bg-primary hover:text-on-primary transition-all flex items-center justify-center gap-xs" onclick="exportTicketToPDF()">
+      <div class="mt-md md:mt-lg pt-md border-t border-dashed border-outline-variant flex flex-col sm:flex-row sm:flex-wrap gap-sm" id="action-footer">
+        <button class="flex-1 w-full min-w-[160px] px-md py-sm rounded-lg font-body-md text-body-md font-semibold text-primary border border-primary hover:bg-primary hover:text-on-primary transition-all" onclick="openEditWorkersForm()">Edit Nama Pekerja</button>
+        <button class="flex-1 w-full min-w-[160px] px-md py-sm rounded-lg font-body-md text-body-md font-semibold text-on-primary bg-primary hover:opacity-90 transition-opacity" onclick="openEditBiayaForm()">Edit Rincian Biaya</button>
+        <button class="flex-1 w-full min-w-[160px] px-md py-sm rounded-lg font-body-md text-body-md font-semibold text-primary border border-primary hover:bg-primary hover:text-on-primary transition-all flex items-center justify-center gap-xs" onclick="exportTicketToPDF()">
           <span class="material-symbols-outlined text-[18px]">picture_as_pdf</span>
           Export PDF
         </button>
@@ -788,7 +830,7 @@ function getPdfTicketData() {
       "penyelesaian", "keterangan perbaikan", "pekerjaan yang dilakukan"
     ]),
     priority,
-    labour: getPdfField(["pekerja", "labour", "pelaksana", "teknisi", "maintenance in charge"]),
+    labour: getPdfField(["nama pekerja", "pekerja", "labour", "worker names", "nama teknisi", "pelaksana", "teknisi"]),
     startTime: getPdfField(["jam mulai", "waktu mulai", "start", "tanggal mulai", "tanggal approved"]),
     finishTime: getPdfField(["jam selesai", "waktu selesai", "finish", "tanggal close", "tanggal selesai", "tanggal closed"]),
     requestedBy: getPdfField(["nama pemohon", "requested by", "nama", "user"]),
@@ -1181,6 +1223,7 @@ async function executeAction(actionType, extra) {
   extra = extra || {};
   let rejectReason = "";
   let biayaWo = "";
+  let workerNames = extra.workerNames || "";
   let photos = extra.photos || [];
 
   if (actionType === "rejected") {
@@ -1194,14 +1237,30 @@ async function executeAction(actionType, extra) {
   } else if (actionType === "finished") {
     if (!confirm(`Anda yakin mengkonfirmasi bahwa tiket ini benar-benar selesai?`)) return;
   } else if (actionType === "approved") {
-    if (!confirm(`Anda yakin ingin menerima (Approve) tiket ini?`)) return;
+    workerNames = extra.workerNames || "";
+    if (!workerNames.trim()) {
+      alert("Nama pekerja wajib diisi sebelum WO disetujui.");
+      return;
+    }
+  } else if (actionType === "update_workers") {
+    workerNames = extra.workerNames || "";
+    if (!workerNames.trim()) {
+      alert("Minimal satu nama pekerja wajib dipertahankan.");
+      return;
+    }
   } else if (actionType === "reopen") {
     rejectReason = extra.rejectReason || "";
   } else if (actionType === "update_biaya_finished") {
     biayaWo = extra.biayaWo || "";
   }
 
-  const usingFormModal = (actionType === "pending_finished" || actionType === "reopen" || actionType === "update_biaya_finished");
+  const usingFormModal = (
+    actionType === "approved"
+    || actionType === "pending_finished"
+    || actionType === "reopen"
+    || actionType === "update_biaya_finished"
+    || actionType === "update_workers"
+  );
   const btnFooter = document.getElementById(usingFormModal ? "form-action-footer" : "action-footer");
   const msgBox = document.getElementById(usingFormModal ? "form-action-msg" : "action-msg");
   const buttons = btnFooter ? btnFooter.querySelectorAll("button") : [];
@@ -1225,6 +1284,8 @@ async function executeAction(actionType, extra) {
         requestId: targetRequestId,
         rejectReason: rejectReason,
         biayaWo: biayaWo,
+        workerNames: workerNames,
+        status: targetItemStatus,
         photos: photos,
         role: sessionStorage.getItem("userRole") || "",
         bagian: sessionStorage.getItem("userBagian") || ""
@@ -1270,12 +1331,16 @@ const btnCloseFormModal = document.getElementById("form-modal-close");
 let biayaRows = [];
 let selectedPhotos = [];
 let editBiayaRows = [];
+let workerRows = [];
+let editWorkerRows = [];
 
 function closeFormModal() {
   formModalOverlay.style.display = "none";
   biayaRows = [];
   selectedPhotos = [];
   editBiayaRows = [];
+  workerRows = [];
+  editWorkerRows = [];
 }
 
 btnCloseFormModal.addEventListener("click", closeFormModal);
@@ -1345,6 +1410,191 @@ function buildBiayaText(rows) {
   lines.push(`TOTAL: ${formatRupiah(total)}`);
 
   return { text: lines.join("\n"), total, validRows };
+}
+
+
+// ============================================================================
+// NAMA PEKERJA / LABOUR
+// Disimpan sebagai daftar satu nama per baris. Saat diedit, daftar lama
+// dimuat kembali lebih dahulu sehingga penambahan tidak menghilangkan nama
+// yang sudah ada. Nama hanya terhapus jika Maintenance menekan tombol hapus.
+// ============================================================================
+function parseWorkerNamesText(text) {
+  if (!text) return [];
+  let rawLines = text.toString().split(/\r?\n/).map(s => s.trim()).filter(Boolean);
+
+  // Dukungan untuk data lama yang mungkin masih dipisahkan koma/titik koma.
+  if (rawLines.length === 1 && /[,;]/.test(rawLines[0])) {
+    rawLines = rawLines[0].split(/[,;]/).map(s => s.trim()).filter(Boolean);
+  }
+
+  const names = [];
+  const seen = new Set();
+  rawLines.forEach(line => {
+    let name = line
+      .replace(/^\[[^\]]+\]\s*/, "")
+      .replace(/^nama\s+(pekerja|teknisi)\s*:\s*/i, "")
+      .replace(/^[-•*]\s*/, "")
+      .replace(/^\d+[.)]\s*/, "")
+      .trim();
+    if (!name) return;
+    const key = name.toLocaleLowerCase('id-ID');
+    if (seen.has(key)) return;
+    seen.add(key);
+    names.push(name);
+  });
+  return names;
+}
+
+function buildWorkerNamesText(rows) {
+  const names = [];
+  const seen = new Set();
+  (rows || []).forEach(row => {
+    const name = (typeof row === "string" ? row : row.name || "").toString().trim();
+    if (!name) return;
+    const key = name.toLocaleLowerCase('id-ID');
+    if (seen.has(key)) return;
+    seen.add(key);
+    names.push(name);
+  });
+  return {
+    names,
+    text: names.map(name => `- ${name}`).join("\n")
+  };
+}
+
+function renderWorkerNameRows(containerId, rows, countElementId) {
+  const container = document.getElementById(containerId);
+  if (!container) return;
+
+  container.innerHTML = rows.map((row, idx) => `
+    <div class="grid grid-cols-[1fr_40px] sm:grid-cols-[1fr_48px] gap-xs sm:gap-sm items-center">
+      <input type="text" placeholder="Nama pekerja / teknisi" value="${escapeHtml(row.name || "")}" data-idx="${idx}"
+        class="px-sm md:px-md py-sm bg-surface rounded-lg border border-outline-variant focus:ring-primary focus:border-primary font-body-md text-[13px] md:text-body-md outline-none">
+      <button type="button" aria-label="Hapus nama pekerja"
+        class="w-10 h-10 sm:w-12 sm:h-10 rounded-lg border border-error text-error bg-error-container/40 hover:bg-error-container transition-all flex justify-center items-center text-xl"
+        ${rows.length <= 1 ? "disabled" : ""} data-remove-idx="${idx}">&times;</button>
+    </div>
+  `).join("");
+
+  container.querySelectorAll("input[data-idx]").forEach(input => {
+    input.addEventListener("input", (event) => {
+      const idx = Number(event.target.getAttribute("data-idx"));
+      rows[idx].name = event.target.value;
+      updateWorkerCount(rows, countElementId);
+    });
+  });
+
+  container.querySelectorAll("button[data-remove-idx]").forEach(button => {
+    button.addEventListener("click", (event) => {
+      const idx = Number(event.currentTarget.getAttribute("data-remove-idx"));
+      rows.splice(idx, 1);
+      renderWorkerNameRows(containerId, rows, countElementId);
+      updateWorkerCount(rows, countElementId);
+    });
+  });
+
+  updateWorkerCount(rows, countElementId);
+}
+
+function updateWorkerCount(rows, elementId) {
+  const el = document.getElementById(elementId);
+  if (!el) return;
+  const count = buildWorkerNamesText(rows).names.length;
+  el.textContent = `${count} orang`;
+}
+
+function openApproveForm() {
+  const existing = parseWorkerNamesText(targetCurrentWorkers);
+  workerRows = existing.length > 0
+    ? existing.map(name => ({ name }))
+    : [{ name: "" }];
+
+  formModalTitle.textContent = "Approve Work Order";
+  formModalBody.innerHTML = `
+    <p class="font-body-md text-[12px] md:text-body-md text-on-surface-variant mb-md">
+      Masukkan nama seluruh pekerja atau teknisi yang ditugaskan. Gunakan satu baris untuk satu nama.
+    </p>
+    <div class="font-label-md text-[10px] md:text-label-md text-outline uppercase tracking-wider mb-sm">Nama Pekerja</div>
+    <div id="approve-worker-rows" class="flex flex-col gap-sm"></div>
+    <button type="button" id="btn-add-approve-worker"
+      class="mt-xs w-full px-md py-sm rounded-lg border border-dashed border-outline-variant text-outline hover:text-primary hover:border-primary font-body-md text-body-md font-semibold transition-all">+ Tambah Baris</button>
+    <div class="flex justify-between items-center mt-md pt-md border-t border-dashed border-outline-variant font-body-md text-body-md font-semibold">
+      <span>Total Pekerja</span>
+      <span class="text-secondary text-headline-sm font-headline-sm" id="approve-worker-count">0 orang</span>
+    </div>
+
+    <div class="mt-md md:mt-lg pt-md border-t border-dashed border-outline-variant flex flex-col sm:flex-row gap-sm" id="form-action-footer">
+      <button class="w-full sm:flex-1 px-md py-sm rounded-lg border border-outline-variant text-on-surface-variant font-body-md text-body-md font-semibold hover:bg-surface-container transition-all" type="button" onclick="closeFormModal()">Batal</button>
+      <button class="w-full sm:flex-1 px-md py-sm rounded-lg bg-secondary text-on-secondary font-body-md text-body-md font-semibold hover:opacity-90 transition-opacity" type="button" id="btn-submit-approve-worker">Approve WO</button>
+    </div>
+    <div id="form-action-msg" class="text-center mt-sm font-label-md text-[10px] md:text-label-md text-outline"></div>
+  `;
+
+  renderWorkerNameRows("approve-worker-rows", workerRows, "approve-worker-count");
+  document.getElementById("btn-add-approve-worker").addEventListener("click", () => {
+    workerRows.push({ name: "" });
+    renderWorkerNameRows("approve-worker-rows", workerRows, "approve-worker-count");
+  });
+  document.getElementById("btn-submit-approve-worker").addEventListener("click", submitApproveForm);
+  formModalOverlay.style.display = "flex";
+}
+
+function submitApproveForm() {
+  const { names, text } = buildWorkerNamesText(workerRows);
+  if (names.length === 0) {
+    alert("Mohon isi minimal satu nama pekerja sebelum WO disetujui.");
+    return;
+  }
+  if (!confirm(`Approve WO ini dengan ${names.length} pekerja?`)) return;
+  executeAction("approved", { workerNames: text });
+}
+
+function openEditWorkersForm() {
+  const existing = parseWorkerNamesText(targetCurrentWorkers);
+  editWorkerRows = existing.length > 0
+    ? existing.map(name => ({ name }))
+    : [{ name: "" }];
+
+  formModalTitle.textContent = "Edit Nama Pekerja";
+  formModalBody.innerHTML = `
+    <p class="font-body-md text-[12px] md:text-body-md text-on-surface-variant mb-md">
+      Semua nama yang sudah tersimpan dimuat kembali di bawah ini. Anda dapat menambah atau menghapus nama.
+      Saat disimpan, daftar akhir tetap memuat seluruh nama yang tampil sehingga data lama tidak hilang tanpa sengaja.
+    </p>
+    <div class="font-label-md text-[10px] md:text-label-md text-outline uppercase tracking-wider mb-sm">Nama Pekerja</div>
+    <div id="edit-worker-rows" class="flex flex-col gap-sm"></div>
+    <button type="button" id="btn-add-edit-worker"
+      class="mt-xs w-full px-md py-sm rounded-lg border border-dashed border-outline-variant text-outline hover:text-primary hover:border-primary font-body-md text-body-md font-semibold transition-all">+ Tambah Baris</button>
+    <div class="flex justify-between items-center mt-md pt-md border-t border-dashed border-outline-variant font-body-md text-body-md font-semibold">
+      <span>Total Pekerja</span>
+      <span class="text-secondary text-headline-sm font-headline-sm" id="edit-worker-count">0 orang</span>
+    </div>
+
+    <div class="mt-md md:mt-lg pt-md border-t border-dashed border-outline-variant flex flex-col sm:flex-row gap-sm" id="form-action-footer">
+      <button class="w-full sm:flex-1 px-md py-sm rounded-lg border border-outline-variant text-on-surface-variant font-body-md text-body-md font-semibold hover:bg-surface-container transition-all" type="button" onclick="closeFormModal()">Batal</button>
+      <button class="w-full sm:flex-1 px-md py-sm rounded-lg bg-primary text-on-primary font-body-md text-body-md font-semibold hover:opacity-90 transition-opacity" type="button" id="btn-submit-edit-worker">Simpan Perubahan</button>
+    </div>
+    <div id="form-action-msg" class="text-center mt-sm font-label-md text-[10px] md:text-label-md text-outline"></div>
+  `;
+
+  renderWorkerNameRows("edit-worker-rows", editWorkerRows, "edit-worker-count");
+  document.getElementById("btn-add-edit-worker").addEventListener("click", () => {
+    editWorkerRows.push({ name: "" });
+    renderWorkerNameRows("edit-worker-rows", editWorkerRows, "edit-worker-count");
+  });
+  document.getElementById("btn-submit-edit-worker").addEventListener("click", submitEditWorkersForm);
+  formModalOverlay.style.display = "flex";
+}
+
+function submitEditWorkersForm() {
+  const { names, text } = buildWorkerNamesText(editWorkerRows);
+  if (names.length === 0) {
+    alert("Minimal satu nama pekerja harus tetap tersimpan.");
+    return;
+  }
+  if (!confirm(`Simpan daftar akhir berisi ${names.length} pekerja? Semua nama yang tampil akan dipertahankan.`)) return;
+  executeAction("update_workers", { workerNames: text });
 }
 
 function resizeImageToBase64(file, maxWidth = 1280, quality = 0.75) {
