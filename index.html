@@ -496,6 +496,68 @@ let notificationRefreshTimer = null;
 let notificationRefreshInFlight = false;
 let lastNotificationRefreshAt = null;
 
+const NOTIFICATION_READ_STORAGE_PREFIX = "simantap-notification-read-v1";
+const NOTIFICATION_READ_MAX_AGE_MS = 120 * 24 * 60 * 60 * 1000;
+
+function getNotificationViewerKey() {
+  const userId = sessionStorage.getItem("userId") || "anonymous";
+  const role = (sessionStorage.getItem("userRole") || "user").toLowerCase();
+  const bagian = (sessionStorage.getItem("userBagian") || "").toLowerCase();
+  return `${NOTIFICATION_READ_STORAGE_PREFIX}:${userId}:${role}:${bagian}`;
+}
+
+function notificationHash(value) {
+  let hash = 2166136261;
+  const input = String(value || "");
+  for (let i = 0; i < input.length; i++) {
+    hash ^= input.charCodeAt(i);
+    hash = Math.imul(hash, 16777619);
+  }
+  return (hash >>> 0).toString(36);
+}
+
+function buildNotificationKey(category, status, title, row) {
+  const rowFingerprint = notificationHash(JSON.stringify(row || []));
+  return `${category}-${status}-${notificationHash(title)}-${rowFingerprint}`;
+}
+
+function loadReadNotificationMap() {
+  try {
+    const raw = localStorage.getItem(getNotificationViewerKey());
+    const parsed = raw ? JSON.parse(raw) : {};
+    const now = Date.now();
+    const cleaned = {};
+    Object.entries(parsed || {}).forEach(([key, timestamp]) => {
+      const numericTimestamp = Number(timestamp);
+      if (Number.isFinite(numericTimestamp) && now - numericTimestamp <= NOTIFICATION_READ_MAX_AGE_MS) {
+        cleaned[key] = numericTimestamp;
+      }
+    });
+    return cleaned;
+  } catch (error) {
+    return {};
+  }
+}
+
+function saveReadNotificationMap(readMap) {
+  try {
+    const entries = Object.entries(readMap || {})
+      .sort((a, b) => Number(b[1]) - Number(a[1]))
+      .slice(0, 500);
+    localStorage.setItem(getNotificationViewerKey(), JSON.stringify(Object.fromEntries(entries)));
+  } catch (error) {
+    // Jika localStorage diblokir browser, notifikasi tetap dapat dibuka,
+    // hanya status "sudah dibaca" yang tidak bertahan setelah refresh.
+  }
+}
+
+function markNotificationAsRead(notificationKey) {
+  if (!notificationKey) return;
+  const readMap = loadReadNotificationMap();
+  readMap[notificationKey] = Date.now();
+  saveReadNotificationMap(readMap);
+}
+
 function updateWibClock() {
   const now = new Date();
   const timeText = new Intl.DateTimeFormat("id-ID", {
@@ -635,6 +697,7 @@ async function fetchNotificationGroup(category, status, role, bagian, descriptor
         description: descriptor.description,
         tone: descriptor.tone,
         actionable: descriptor.actionable,
+        notificationKey: buildNotificationKey(category, status, descriptor.title, row),
         sortTime: parseNotificationDate(info.date)
       };
     });
@@ -656,7 +719,7 @@ function renderRoleNotifications(errorMessage = "") {
   const actionableCount = notificationItems.filter(item => item.actionable).length;
   notificationCount.textContent = actionableCount > 99 ? "99+" : String(actionableCount);
   notificationCount.classList.toggle("hidden", actionableCount === 0);
-  notificationSummary.textContent = `${notificationItems.length} notifikasi aktif • ${actionableCount} perlu tindakan`;
+  notificationSummary.textContent = `${notificationItems.length} notifikasi baru • ${actionableCount} perlu tindakan`;
 
   if (errorMessage && notificationItems.length === 0) {
     notificationList.innerHTML = `<div class="p-lg text-center">
@@ -670,8 +733,8 @@ function renderRoleNotifications(errorMessage = "") {
   if (notificationItems.length === 0) {
     notificationList.innerHTML = `<div class="p-lg text-center">
       <span class="material-symbols-outlined text-secondary text-[30px]">notifications_none</span>
-      <div class="font-body-md text-body-md text-on-surface mt-sm">Tidak ada notifikasi aktif.</div>
-      <div class="font-label-md text-[10px] text-outline mt-xs">Semua tiket yang memerlukan perhatian sudah tertangani.</div>
+      <div class="font-body-md text-body-md text-on-surface mt-sm">Tidak ada notifikasi baru.</div>
+      <div class="font-label-md text-[10px] text-outline mt-xs">Notifikasi yang sudah dibuka disembunyikan sampai ada perubahan baru pada tiket.</div>
     </div>`;
     return;
   }
@@ -679,7 +742,7 @@ function renderRoleNotifications(errorMessage = "") {
   notificationList.innerHTML = notificationItems.slice(0, 30).map(item => {
     const tone = notificationToneClasses(item.tone);
     const secondary = item.equipment || item.name || item.description;
-    return `<button type="button" data-notification-category="${item.category}" data-notification-status="${item.status}"
+    return `<button type="button" data-notification-key="${item.notificationKey}" data-notification-category="${item.category}" data-notification-status="${item.status}"
       class="w-full text-left px-md py-sm border-b border-outline-variant/20 last:border-b-0 hover:bg-surface-container-low transition flex items-start gap-sm">
       <span class="h-9 w-9 rounded-lg ${tone.iconBg} ${tone.iconText} flex items-center justify-center shrink-0 mt-0.5">
         <span class="material-symbols-outlined text-[19px]">${tone.icon}</span>
@@ -697,6 +760,10 @@ function renderRoleNotifications(errorMessage = "") {
 
   notificationList.querySelectorAll("[data-notification-category]").forEach(button => {
     button.addEventListener("click", () => {
+      const notificationKey = button.dataset.notificationKey || "";
+      markNotificationAsRead(notificationKey);
+      notificationItems = notificationItems.filter(item => item.notificationKey !== notificationKey);
+      renderRoleNotifications();
       navigateFromNotification(button.dataset.notificationCategory, button.dataset.notificationStatus);
     });
   });
@@ -764,9 +831,11 @@ async function refreshRoleNotifications(silent = false) {
       });
     });
     const results = await Promise.allSettled(jobs);
+    const readNotificationMap = loadReadNotificationMap();
     notificationItems = results
       .filter(result => result.status === "fulfilled")
       .flatMap(result => result.value)
+      .filter(item => !readNotificationMap[item.notificationKey])
       .sort((a, b) => b.sortTime - a.sortTime || a.id.localeCompare(b.id));
 
     const failedCount = results.filter(result => result.status === "rejected").length;
@@ -3267,6 +3336,7 @@ loginForm.addEventListener("submit", async (e) => {
 
     if (result.success) {
       sessionStorage.setItem("loggedIn", "true");
+      sessionStorage.setItem("userId", username);
       sessionStorage.setItem("userRole", result.role || "user");
       sessionStorage.setItem("userBagian", result.bagian || "");
       loginScreen.style.display = "none";
@@ -3290,6 +3360,7 @@ loginForm.addEventListener("submit", async (e) => {
 document.getElementById("logout-btn").addEventListener("click", () => {
   stopRoleNotificationSystem();
   sessionStorage.removeItem("loggedIn");
+  sessionStorage.removeItem("userId");
   sessionStorage.removeItem("userRole");
   sessionStorage.removeItem("userBagian");
   activeCategory = "master";
