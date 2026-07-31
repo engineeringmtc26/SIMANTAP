@@ -1115,18 +1115,20 @@ function getPdfTicketData() {
     requestDateOnly: requestParts.date,
     requestDisplay: requestParts.display,
 
-    // No. Alat mengambil Kode Bagian, Nama Alat mengambil Equipment.
-    equipmentNo: getPdfField(["kode bagian", "kode bagian alat", "kode departemen", "no alat", "nomor alat", "equip no", "equipment no"]),
-    equipmentName: getPdfField(["equipment", "nama equipment", "nama alat", "equip name", "equipment name"]),
+    // No. Alat mengambil nilai dari kolom Equipment. Kode Bagian tidak digunakan.
+    equipmentNo: getPdfField([
+      "equipment", "equipment no", "equipment number", "nomor equipment",
+      "no equipment", "no. equipment"
+    ]),
+    // Nama Alat pada formulir PDF sengaja dikosongkan.
+    equipmentName: "",
     location: getPdfField(["lokasi", "function location", "functional location", "area"]),
     requestWork: getPdfField([
       "permintaan pekerjaan", "request work", "uraian pekerjaan", "deskripsi pekerjaan",
       "keluhan", "problem", "kerusakan", "request"
     ]),
-    repairWorkDone: getPdfField([
-      "pekerjaan perbaikan selesai", "repair work done", "hasil pekerjaan", "tindakan perbaikan",
-      "penyelesaian", "keterangan perbaikan", "pekerjaan yang dilakukan"
-    ]),
+    // Isi kolom Repair Work Done dibuat statis sesuai format formulir.
+    repairWorkDone: "Done",
     priority,
 
     // Judul PDF "Pekerja", sumber data tetap kolom Personil MTC.
