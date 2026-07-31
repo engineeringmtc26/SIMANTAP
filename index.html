@@ -285,7 +285,7 @@
       <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-md bg-surface-container-lowest p-md rounded-xl custom-shadow border border-outline-variant/30">
         <div>
           <h2 class="font-headline-md text-headline-md text-on-background">Dashboard Maintenance</h2>
-          <p class="font-body-md text-body-md text-on-surface-variant mt-xs">Ringkasan Work Order berdasarkan waktu tiket.</p>
+          <p class="font-body-md text-body-md text-on-surface-variant mt-xs">Ringkasan Work Order berdasarkan Tanggal Approved.</p>
         </div>
         <div class="flex flex-col sm:flex-row flex-wrap gap-sm items-stretch sm:items-center">
           <select id="dashboard-filter-type" class="px-md py-sm bg-surface rounded-lg border border-outline-variant font-body-md text-body-md outline-none">
@@ -353,7 +353,7 @@
       <div class="flex flex-col md:flex-row md:items-center justify-between gap-md bg-surface-container-lowest p-md rounded-xl custom-shadow border border-outline-variant/30">
         <div>
           <h2 class="font-headline-md text-headline-md text-on-background">Equipment History</h2>
-          <p class="font-body-md text-body-md text-on-surface-variant mt-xs">Riwayat WO Finished yang diakumulasikan per Tag Number dan tersinkron otomatis dari Master WO.</p>
+          <p class="font-body-md text-body-md text-on-surface-variant mt-xs">Riwayat WO Finished per Tag Number. Filter periode menggunakan Tanggal Approved dan Biaya Jasa dapat diedit per tiket.</p>
         </div>
         <div class="flex flex-col xl:items-end gap-sm w-full md:w-auto">
           <div class="flex flex-col sm:flex-row flex-wrap gap-sm items-stretch sm:items-center">
@@ -488,6 +488,7 @@ const equipmentHistoryView = document.getElementById("equipment-history-view");
 let dashboardCharts = { status: null, category: null, topCosts: null };
 let equipmentHistoryHeaders = [];
 let equipmentHistoryRows = [];
+let equipmentHistoryItems = [];
 
 function showApplicationView(viewName) {
   const isDashboard = viewName === "dashboard";
@@ -563,14 +564,16 @@ function parseCSVDateToISO(dateStr) {
 }
 
 function findColumnsIndex(header) {
-  const woIdx = header.findIndex(h => h.toLowerCase().trim().includes("nomor wo"));
-  const reqIdx = header.findIndex(h => h.toLowerCase().trim().includes("request id"));
-  const nameIdx = header.findIndex(h => h.toLowerCase().trim() === "nama" || h.toLowerCase().trim().includes("nama pemohon"));
-  const dateIdx = header.findIndex(h => h.toLowerCase().trim().includes("timestamp") || h.toLowerCase().trim().includes("tanggal"));
+  const normalized = header.map(h => String(h || "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim());
+  const woIdx = normalized.findIndex(h => h.includes("nomor wo"));
+  const reqIdx = normalized.findIndex(h => h.includes("request id"));
+  const nameIdx = normalized.findIndex(h => h === "nama" || h.includes("nama pemohon"));
+  // Seluruh filter waktu menu WO memakai Tanggal Approved, bukan Timestamp.
+  const dateIdx = normalized.findIndex(h => h === "tanggal approved" || h === "approved date" || h.includes("tanggal approval"));
   return {
     idIdx: woIdx !== -1 ? woIdx : (reqIdx !== -1 ? reqIdx : 0),
     nameIdx: nameIdx !== -1 ? nameIdx : 1,
-    dateIdx: dateIdx !== -1 ? dateIdx : -1
+    dateIdx
   };
 }
 
@@ -694,12 +697,19 @@ function renderData() {
     const r = itemObj.rowData;
     let include = true;
 
-    if (cols.dateIdx !== -1 && filterVal !== "all") {
-      const rowDateIso = parseCSVDateToISO(r[cols.dateIdx]);
-      if (filterVal === "single" && d1) {
-        if (rowDateIso !== d1) include = false;
-      } else if (filterVal === "range" && d1 && d2) {
-        if (rowDateIso < d1 || rowDateIso > d2) include = false;
+    if (filterVal !== "all") {
+      // Tiket yang belum memiliki Tanggal Approved tidak termasuk dalam
+      // filter tanggal tertentu/rentang tanggal.
+      if (cols.dateIdx === -1) {
+        include = false;
+      } else {
+        const rowDateIso = parseCSVDateToISO(r[cols.dateIdx]);
+        if (!rowDateIso) include = false;
+        else if (filterVal === "single" && d1) {
+          if (rowDateIso !== d1) include = false;
+        } else if (filterVal === "range" && d1 && d2) {
+          if (rowDateIso < d1 || rowDateIso > d2) include = false;
+        }
       }
     }
 
@@ -2485,83 +2495,117 @@ function renderEquipmentHistory() {
   const query = document.getElementById("equipment-history-search").value.trim().toLowerCase();
   const head = document.getElementById("equipment-history-head");
   const body = document.getElementById("equipment-history-body");
-  const displayHeaders = [...equipmentHistoryHeaders, "Aksi"];
-  head.innerHTML = `<tr>${displayHeaders.map(header => {
-    const stickyClass = header === "Aksi" ? " sticky right-0 z-10 bg-[#5B3F92]" : "";
-    return `<th class="px-md py-sm text-[12px] font-semibold whitespace-nowrap${stickyClass}">${escapeHtml(header)}</th>`;
-  }).join("")}</tr>`;
+  const displayHeaders = ["Tag Number", "Riwayat Tiket WO", "Akumulasi Equipment"];
+  head.innerHTML = `<tr>${displayHeaders.map(header => `<th class="px-md py-sm text-[12px] font-semibold whitespace-nowrap">${escapeHtml(header)}</th>`).join("")}</tr>`;
 
-  const visibleRows = equipmentHistoryRows
-    .map((row, originalIndex) => ({ row, originalIndex }))
-    .filter(item => !query || item.row.join(" ").toLowerCase().includes(query));
-  if (visibleRows.length === 0) {
-    body.innerHTML = `<tr><td colspan="${Math.max(displayHeaders.length, 1)}" class="px-md py-xl text-center text-outline">Belum ada data Equipment History.</td></tr>`;
+  const visibleItems = equipmentHistoryItems.filter(item => {
+    if (!query) return true;
+    return JSON.stringify(item).toLowerCase().includes(query);
+  });
+  if (visibleItems.length === 0) {
+    body.innerHTML = `<tr><td colspan="3" class="px-md py-xl text-center text-outline">Belum ada data Equipment History pada periode ini.</td></tr>`;
     return;
   }
 
-  body.innerHTML = visibleRows.map(item => `
-    <tr class="hover:bg-surface-container-low/60">
-      ${equipmentHistoryHeaders.map((header, index) => `<td class="px-md py-sm text-[12px] align-top whitespace-pre-wrap">${escapeHtml(String(formatEquipmentHistoryValue(item.row[index], header)))}</td>`).join("")}
-      <td class="px-md py-sm align-top whitespace-nowrap sticky right-0 z-[5] bg-white border-l border-outline-variant/30">
-        <button type="button" data-equipment-edit-index="${item.originalIndex}" class="px-sm py-xs rounded-lg bg-primary text-white text-[11px] font-semibold hover:opacity-90 inline-flex items-center gap-1 shadow-sm">
-          <span class="material-symbols-outlined text-[15px]">edit</span>Edit Biaya Jasa
-        </button>
-      </td>
-    </tr>
-  `).join("");
+  body.innerHTML = visibleItems.map((equipment, equipmentIndex) => {
+    const ticketRows = (equipment.tickets || []).map((ticket, ticketIndex) => `
+      <div class="grid grid-cols-1 lg:grid-cols-[120px_110px_minmax(180px,1fr)_145px_145px_145px_170px_170px] gap-xs py-sm border-b border-outline-variant/30 last:border-b-0 items-start">
+        <div class="font-semibold text-primary">${escapeHtml(ticket.nomorWo || ticket.requestId || "-")}</div>
+        <div>${escapeHtml(ticket.jenisWo || "-")}</div>
+        <div class="whitespace-pre-wrap">${escapeHtml(ticket.deskripsi || "-")}</div>
+        <div><span class="lg:hidden font-semibold">Material: </span>${escapeHtml(rupiahForChart(Number(ticket.biayaMaterial || 0)))}</div>
+        <div>
+          <div><span class="lg:hidden font-semibold">Jasa: </span>${escapeHtml(rupiahForChart(Number(ticket.biayaJasa || 0)))}</div>
+          <button type="button" data-service-equipment="${equipmentIndex}" data-service-ticket="${ticketIndex}" class="mt-xs px-sm py-xs rounded-lg bg-primary text-white text-[11px] font-semibold hover:opacity-90 inline-flex items-center gap-1">
+            <span class="material-symbols-outlined text-[14px]">edit</span>Edit Biaya Jasa
+          </button>
+        </div>
+        <div><span class="lg:hidden font-semibold">Total: </span>${escapeHtml(rupiahForChart(Number(ticket.totalBiaya || 0)))}</div>
+        <div><span class="lg:hidden font-semibold">Downtime: </span>${escapeHtml(ticket.downtime || "-")}</div>
+        <div>
+          <div><span class="font-semibold">Approved:</span> ${escapeHtml(ticket.tanggalApproved || "-")}</div>
+          <div class="mt-xs"><span class="font-semibold">Closed:</span> ${escapeHtml(ticket.tanggalClosed || "-")}</div>
+        </div>
+      </div>
+    `).join("");
 
-  body.querySelectorAll("button[data-equipment-edit-index]").forEach(button => {
-    button.addEventListener("click", () => openEquipmentServiceCostForm(Number(button.dataset.equipmentEditIndex)));
+    return `
+      <tr class="hover:bg-surface-container-low/30">
+        <td class="px-md py-md align-top min-w-[150px]">
+          <div class="font-bold text-[14px] text-on-surface">${escapeHtml(equipment.tagNumber || "-")}</div>
+          <div class="mt-xs text-[11px] text-outline">${(equipment.tickets || []).length} tiket WO</div>
+        </td>
+        <td class="px-md py-md align-top min-w-[900px]">
+          <div class="hidden lg:grid grid-cols-[120px_110px_minmax(180px,1fr)_145px_145px_145px_170px_170px] gap-xs pb-xs border-b border-outline-variant font-semibold text-[10px] uppercase tracking-wider text-outline">
+            <div>Nomor WO</div><div>Jenis</div><div>Deskripsi</div><div>Biaya Material</div><div>Biaya Jasa</div><div>Total</div><div>Downtime</div><div>Tanggal</div>
+          </div>
+          ${ticketRows}
+        </td>
+        <td class="px-md py-md align-top min-w-[220px] bg-surface-container-low/40">
+          <div class="space-y-sm text-[12px]">
+            <div><span class="text-outline">Biaya Material</span><div class="font-semibold">${escapeHtml(rupiahForChart(Number(equipment.biayaMaterial || 0)))}</div></div>
+            <div><span class="text-outline">Biaya Jasa</span><div class="font-semibold">${escapeHtml(rupiahForChart(Number(equipment.biayaJasa || 0)))}</div></div>
+            <div><span class="text-outline">Total Biaya</span><div class="font-bold text-primary">${escapeHtml(rupiahForChart(Number(equipment.totalBiaya || 0)))}</div></div>
+            <div><span class="text-outline">Total Downtime</span><div class="font-semibold">${escapeHtml(equipment.downtime || "-")}</div></div>
+          </div>
+        </td>
+      </tr>`;
+  }).join("");
+
+  body.querySelectorAll("button[data-service-equipment]").forEach(button => {
+    button.addEventListener("click", () => openEquipmentServiceCostForm(
+      Number(button.dataset.serviceEquipment),
+      Number(button.dataset.serviceTicket)
+    ));
   });
 }
 
-function openEquipmentServiceCostForm(rowIndex) {
-  const row = equipmentHistoryRows[rowIndex];
-  if (!row) return;
-  const tagIdx = equipmentColumnIndex("Tag Number");
-  const materialIdx = equipmentColumnIndex("Biaya Material");
-  const serviceIdx = equipmentColumnIndex("Biaya Jasa");
-  const totalIdx = equipmentColumnIndex("Total Biaya");
-  const tagNumber = String(row[tagIdx] || "").trim();
-  const materialCost = parseEquipmentCurrency(row[materialIdx]);
-  const serviceCost = parseEquipmentCurrency(row[serviceIdx]);
-  const totalCost = parseEquipmentCurrency(row[totalIdx]);
+function openEquipmentServiceCostForm(equipmentIndex, ticketIndex) {
+  const equipment = equipmentHistoryItems[equipmentIndex];
+  const ticket = equipment?.tickets?.[ticketIndex];
+  if (!equipment || !ticket) return;
+  const materialCost = Number(ticket.biayaMaterial || 0);
+  const serviceCost = Number(ticket.biayaJasa || 0);
+  const totalCost = Number(ticket.totalBiaya || 0);
 
-  formModalTitle.textContent = `Edit Biaya Jasa — ${tagNumber}`;
+  formModalTitle.textContent = `Edit Biaya Jasa — ${ticket.nomorWo || ticket.requestId}`;
   formModalBody.innerHTML = `
     <div class="space-y-md">
+      <div class="p-md rounded-lg bg-surface-container-low border border-outline-variant/30">
+        <div class="font-label-md text-[10px] uppercase tracking-wider text-outline">Equipment</div>
+        <div class="mt-xs font-semibold text-on-surface">${escapeHtml(equipment.tagNumber || "-")}</div>
+      </div>
       <div class="grid grid-cols-1 sm:grid-cols-2 gap-sm">
         <div class="p-md rounded-lg bg-surface-container-low border border-outline-variant/30">
-          <div class="font-label-md text-[10px] uppercase tracking-wider text-outline">Biaya Material</div>
+          <div class="font-label-md text-[10px] uppercase tracking-wider text-outline">Biaya Material Tiket</div>
           <div class="mt-xs font-semibold text-on-surface">${rupiahForChart(materialCost)}</div>
         </div>
         <div class="p-md rounded-lg bg-surface-container-low border border-outline-variant/30">
-          <div class="font-label-md text-[10px] uppercase tracking-wider text-outline">Total Saat Ini</div>
+          <div class="font-label-md text-[10px] uppercase tracking-wider text-outline">Total Tiket</div>
           <div class="mt-xs font-semibold text-on-surface" id="equipment-service-total-preview">${rupiahForChart(totalCost)}</div>
         </div>
       </div>
       <div>
-        <label class="block font-label-md text-[10px] md:text-label-md uppercase tracking-wider text-outline mb-xs">Biaya Jasa</label>
+        <label class="block font-label-md text-[10px] md:text-label-md uppercase tracking-wider text-outline mb-xs">Biaya Jasa Tiket</label>
         <input type="number" min="0" step="1" id="equipment-service-cost-input" value="${serviceCost}" class="w-full px-md py-sm bg-surface rounded-lg border border-outline-variant focus:ring-primary focus:border-primary font-body-md text-body-md outline-none">
-        <p class="mt-xs text-[11px] text-outline">Nilai ini disimpan per Tag Number dan tidak hilang saat Equipment History disinkronkan ulang.</p>
+        <p class="mt-xs text-[11px] text-outline">Nilai disimpan pada tiket ${escapeHtml(ticket.nomorWo || ticket.requestId)} di Master WO.</p>
       </div>
       <div class="flex flex-col sm:flex-row gap-sm pt-md border-t border-dashed border-outline-variant">
         <button type="button" onclick="closeFormModal()" class="flex-1 px-md py-sm rounded-lg border border-outline-variant text-on-surface-variant font-semibold">Batal</button>
         <button type="button" id="equipment-service-save" class="flex-1 px-md py-sm rounded-lg bg-primary text-white font-semibold">Simpan</button>
       </div>
       <div id="equipment-service-message" class="text-center text-[12px] text-outline"></div>
-    </div>
-  `;
+    </div>`;
   formModalOverlay.style.display = "flex";
 
   const input = document.getElementById("equipment-service-cost-input");
   input.addEventListener("input", () => {
     document.getElementById("equipment-service-total-preview").textContent = rupiahForChart(materialCost + (Number(input.value) || 0));
   });
-  document.getElementById("equipment-service-save").addEventListener("click", () => submitEquipmentServiceCost(tagNumber, input));
+  document.getElementById("equipment-service-save").addEventListener("click", () => submitEquipmentServiceCost(ticket, input));
 }
 
-async function submitEquipmentServiceCost(tagNumber, input) {
+async function submitEquipmentServiceCost(ticket, input) {
   const serviceCost = Number(input.value);
   if (!Number.isFinite(serviceCost) || serviceCost < 0) {
     alert("Biaya Jasa harus berupa angka nol atau lebih besar.");
@@ -2580,7 +2624,8 @@ async function submitEquipmentServiceCost(tagNumber, input) {
         type: "action",
         action: "update_equipment_service_cost",
         role: sessionStorage.getItem("userRole") || "",
-        tagNumber,
+        requestId: ticket.requestId || ticket.nomorWo,
+        nomorWo: ticket.nomorWo || "",
         biayaJasa: serviceCost
       })
     });
@@ -2589,7 +2634,6 @@ async function submitEquipmentServiceCost(tagNumber, input) {
     if (!result.success) throw new Error(result.message || "Gagal menyimpan Biaya Jasa.");
     closeFormModal();
     await fetchEquipmentHistory();
-    if (activeCategory === "dashboard") await fetchDashboardData();
   } catch (error) {
     message.textContent = error.message;
     message.className = "text-center text-[12px] text-error";
@@ -2637,12 +2681,13 @@ async function fetchEquipmentHistory() {
 
     equipmentHistoryHeaders = result.headers || [];
     equipmentHistoryRows = result.rows || [];
+    equipmentHistoryItems = result.items || [];
     renderEquipmentHistory();
 
     const shownEquipment = result.filteredSummary?.equipment ?? equipmentHistoryRows.length;
     const shownWo = result.filteredSummary?.totalWo ?? result.syncSummary?.totalWo ?? 0;
     const syncedAt = result.syncSummary?.updatedAt || "-";
-    statusEl.textContent = `${shownEquipment} equipment dan ${shownWo} WO ditampilkan (${equipmentHistoryFilterLabel()}). Sinkron sheet: ${syncedAt}`;
+    statusEl.textContent = `${shownEquipment} equipment dan ${shownWo} WO ditampilkan (${equipmentHistoryFilterLabel()}). Filter: Tanggal Approved. Sinkron sheet: ${syncedAt}`;
     statusEl.className = "font-body-md text-body-md text-on-surface-variant";
 
     if (result.syncWarning) console.warn("Peringatan sinkronisasi Equipment History:", result.syncWarning);
