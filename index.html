@@ -151,8 +151,41 @@
           <span class="hidden sm:block text-[8px] md:text-[10px] uppercase tracking-widest text-outline mt-1 font-bold whitespace-nowrap">Industrial Work Order</span>
         </div>
       </div>
-      <div class="flex items-center gap-xs md:gap-md">
-        <div id="user-role-badge" class="hidden sm:flex items-center gap-xs px-md py-sm rounded-lg bg-surface-container-high text-on-surface-variant font-body-md text-body-md font-semibold">
+      <div class="flex items-center gap-xs md:gap-sm shrink-0">
+        <div id="wib-clock" class="hidden sm:flex items-center gap-xs px-sm md:px-md py-sm rounded-lg bg-surface-container-low text-on-surface-variant border border-outline-variant/30 font-label-md text-[10px] md:text-label-md whitespace-nowrap" title="Waktu Indonesia Barat">
+          <span class="material-symbols-outlined text-[17px]">schedule</span>
+          <span id="wib-clock-text">--:--:-- WIB</span>
+        </div>
+
+        <div id="notification-wrapper" class="relative">
+          <button id="notification-button" type="button"
+            class="relative h-10 w-10 md:h-11 md:w-11 rounded-lg bg-surface-container-low text-on-surface-variant border border-outline-variant/30 hover:bg-surface-container-high hover:text-primary transition-all flex items-center justify-center"
+            aria-label="Buka notifikasi" aria-expanded="false" title="Notifikasi">
+            <span class="material-symbols-outlined text-[22px]">notifications</span>
+            <span id="notification-count" class="hidden absolute -top-1 -right-1 min-w-[19px] h-[19px] px-1 rounded-full bg-error text-white text-[10px] font-bold leading-[19px] text-center shadow-sm">0</span>
+          </button>
+
+          <div id="notification-dropdown" class="hidden absolute right-0 top-full mt-2 w-[min(92vw,390px)] bg-surface-container-lowest rounded-xl border border-outline-variant/40 custom-shadow overflow-hidden z-[120]">
+            <div class="px-md py-sm border-b border-outline-variant/30 bg-surface-container-low flex items-center justify-between gap-sm">
+              <div>
+                <div class="font-headline-sm text-[15px] text-on-background">Notifikasi</div>
+                <div id="notification-role-label" class="font-label-md text-[9px] text-outline uppercase tracking-wider">Memuat sesuai role</div>
+              </div>
+              <button id="notification-refresh" type="button" class="h-8 w-8 rounded-lg hover:bg-surface-container-high text-outline hover:text-primary transition flex items-center justify-center" title="Perbarui notifikasi">
+                <span class="material-symbols-outlined text-[19px]">refresh</span>
+              </button>
+            </div>
+            <div id="notification-list" class="max-h-[360px] overflow-y-auto">
+              <div class="p-lg text-center font-body-md text-body-md text-outline">Belum ada data notifikasi.</div>
+            </div>
+            <div class="px-md py-sm border-t border-outline-variant/30 bg-surface-container-low/60 flex items-center justify-between gap-sm">
+              <span id="notification-summary" class="font-label-md text-[9px] text-outline uppercase">0 notifikasi aktif</span>
+              <span id="notification-updated-at" class="font-label-md text-[9px] text-outline">Belum diperbarui</span>
+            </div>
+          </div>
+        </div>
+
+        <div id="user-role-badge" class="hidden lg:flex items-center gap-xs px-md py-sm rounded-lg bg-surface-container-high text-on-surface-variant font-body-md text-body-md font-semibold">
           <span class="material-symbols-outlined text-[18px]">account_circle</span>
           <span id="user-role-badge-text"></span>
         </div>
@@ -174,12 +207,12 @@
             Sistem Manajemen Operasional Terpadu untuk pemeliharaan dan pemantauan infrastruktur.
           </p>
         </div>
-        <div class="inline-flex items-center gap-sm bg-surface-container-low px-md py-sm rounded-full self-center md:self-start shrink-0">
-          <span class="relative flex h-3 w-3">
-            <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-secondary opacity-75"></span>
-            <span class="relative inline-flex rounded-full h-3 w-3 bg-secondary"></span>
+        <div id="sync-status-badge" class="inline-flex items-center gap-sm px-md py-sm rounded-full self-center md:self-start shrink-0 transition-all" title="Status sinkronisasi">
+          <span class="relative flex h-3 w-3 shrink-0">
+            <span id="sync-status-ping" class="hidden absolute inline-flex h-full w-full rounded-full opacity-70"></span>
+            <span id="sync-status-dot" class="relative inline-flex rounded-full h-3 w-3"></span>
           </span>
-          <span class="font-label-md text-label-md text-on-secondary-container uppercase">Status: Live Sync</span>
+          <span id="sync-status-text" class="font-label-md text-label-md uppercase whitespace-nowrap">Menunggu sinkronisasi</span>
         </div>
       </div>
     </section>
@@ -372,11 +405,8 @@
               <span class="material-symbols-outlined text-[18px]">filter_list</span>Terapkan
             </button>
           </div>
-          <div class="flex flex-col sm:flex-row gap-sm items-stretch sm:items-center w-full">
-            <input id="equipment-history-search" type="search" placeholder="Cari Tag Number / Nomor WO / Deskripsi" class="flex-1 min-w-[280px] px-md py-sm bg-surface rounded-lg border border-outline-variant font-body-md text-body-md outline-none">
-            <button id="equipment-history-refresh" class="px-lg py-sm bg-secondary text-white rounded-lg font-body-md text-body-md font-semibold flex items-center justify-center gap-xs">
-              <span class="material-symbols-outlined text-[18px]">sync</span>Sinkronkan Sheet
-            </button>
+          <div class="flex items-center w-full">
+            <input id="equipment-history-search" type="search" placeholder="Cari Tag Number / Nomor WO / Deskripsi" class="w-full min-w-[280px] px-md py-sm bg-surface rounded-lg border border-outline-variant font-body-md text-body-md outline-none">
           </div>
         </div>
       </div>
@@ -444,6 +474,468 @@
 // KONFIGURASI URL
 // ============================================================================
 const LOGIN_API_URL = "https://script.google.com/macros/s/AKfycby0zizP0bAHVGVUWkmM3NNz3TrZucTrcEfrFKpCr0qQMmlCR5XtZBqVAxiCQeVl74ya/exec";
+
+
+// ============================================================================
+// JAM WIB DAN NOTIFIKASI BERDASARKAN ROLE
+// ============================================================================
+const wibClockEl = document.getElementById("wib-clock");
+const wibClockText = document.getElementById("wib-clock-text");
+const notificationWrapper = document.getElementById("notification-wrapper");
+const notificationButton = document.getElementById("notification-button");
+const notificationCount = document.getElementById("notification-count");
+const notificationDropdown = document.getElementById("notification-dropdown");
+const notificationList = document.getElementById("notification-list");
+const notificationRoleLabel = document.getElementById("notification-role-label");
+const notificationSummary = document.getElementById("notification-summary");
+const notificationUpdatedAt = document.getElementById("notification-updated-at");
+const notificationRefreshButton = document.getElementById("notification-refresh");
+
+let notificationItems = [];
+let notificationRefreshTimer = null;
+let notificationRefreshInFlight = false;
+let lastNotificationRefreshAt = null;
+
+function updateWibClock() {
+  const now = new Date();
+  const timeText = new Intl.DateTimeFormat("id-ID", {
+    timeZone: "Asia/Jakarta",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: false
+  }).format(now);
+  const dateText = new Intl.DateTimeFormat("id-ID", {
+    timeZone: "Asia/Jakarta",
+    weekday: "long",
+    day: "2-digit",
+    month: "long",
+    year: "numeric"
+  }).format(now);
+  if (wibClockText) wibClockText.textContent = `${timeText} WIB`;
+  if (wibClockEl) wibClockEl.title = `${dateText} • Waktu Indonesia Barat`;
+}
+updateWibClock();
+setInterval(updateWibClock, 1000);
+
+function normalizeNotificationHeader(value) {
+  return String(value || "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+}
+
+function findNotificationColumn(headers, predicates) {
+  const normalized = (headers || []).map(normalizeNotificationHeader);
+  for (const predicate of predicates) {
+    const idx = normalized.findIndex(predicate);
+    if (idx !== -1) return idx;
+  }
+  return -1;
+}
+
+function notificationRowInfo(headers, row, status = "") {
+  const idIdx = findNotificationColumn(headers, [
+    h => h.includes("nomor wo"),
+    h => h.includes("request id")
+  ]);
+  const equipmentIdx = findNotificationColumn(headers, [
+    h => h === "equipment",
+    h => h === "tag number",
+    h => h.includes("no alat") || h.includes("equip no")
+  ]);
+  const nameIdx = findNotificationColumn(headers, [
+    h => h.includes("nama pemohon"),
+    h => h === "nama"
+  ]);
+
+  let datePredicates = [];
+  if (status === "finished") {
+    datePredicates = [
+      h => h.includes("tanggal close") || h.includes("tanggal closed") || h === "closed date",
+      h => h.includes("tanggal selesai")
+    ];
+  } else if (status === "pending_finished") {
+    datePredicates = [
+      h => h.includes("tanggal mtc selesai terbaru"),
+      h => h.includes("tanggal mtc selesai")
+    ];
+  } else if (status === "approved") {
+    datePredicates = [
+      h => h === "tanggal approved" || h === "approved date" || h.includes("tanggal approval")
+    ];
+  }
+  datePredicates.push(
+    h => h === "tanggal approved" || h === "approved date" || h.includes("tanggal approval"),
+    h => h.includes("timestamp"),
+    h => h === "tanggal"
+  );
+  const dateIdx = findNotificationColumn(headers, datePredicates);
+
+  return {
+    id: String(idIdx !== -1 ? row[idIdx] || "" : "").trim() || "Tanpa nomor WO",
+    equipment: String(equipmentIdx !== -1 ? row[equipmentIdx] || "" : "").trim(),
+    name: String(nameIdx !== -1 ? row[nameIdx] || "" : "").trim(),
+    date: String(dateIdx !== -1 ? row[dateIdx] || "" : "").trim()
+  };
+}
+
+function isReopenedNotificationRow(headers, row) {
+  const verificationIdx = findNotificationColumn(headers, [
+    h => h === "user verifikasi" || h.includes("verifikasi user") || h.includes("user verification")
+  ]);
+  const revisionIdx = findNotificationColumn(headers, [
+    h => h.includes("catatan revisi"),
+    h => h.includes("alasan revisi"),
+    h => h.includes("alasan kembali"),
+    h => h.includes("reopen")
+  ]);
+
+  const verification = String(verificationIdx !== -1 ? row[verificationIdx] || "" : "").trim().toLowerCase();
+  const revision = String(revisionIdx !== -1 ? row[revisionIdx] || "" : "").trim();
+  return verification.includes("tidak sesuai") || revision !== "";
+}
+
+function parseNotificationDate(value) {
+  const raw = String(value || "").trim();
+  if (!raw) return 0;
+  const dmy = raw.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})(?:\s+(\d{1,2}):(\d{2})(?::(\d{2}))?)?/);
+  if (dmy) {
+    return new Date(
+      Number(dmy[3]), Number(dmy[2]) - 1, Number(dmy[1]),
+      Number(dmy[4] || 0), Number(dmy[5] || 0), Number(dmy[6] || 0)
+    ).getTime();
+  }
+  const parsed = new Date(raw).getTime();
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+async function fetchNotificationGroup(category, status, role, bagian, descriptor) {
+  const params = new URLSearchParams({
+    mode: "single",
+    category,
+    status,
+    role,
+    bagian,
+    _: Date.now()
+  });
+  const response = await fetch(`${LOGIN_API_URL}?${params.toString()}`);
+  if (!response.ok) throw new Error(`HTTP ${response.status}`);
+  const result = await response.json();
+  if (!result.success) throw new Error(result.message || "Gagal mengambil notifikasi");
+
+  const headers = result.headers || [];
+  return (result.rows || [])
+    .filter(row => typeof descriptor.filterRow !== "function" || descriptor.filterRow(headers, row))
+    .map(row => {
+      const info = notificationRowInfo(headers, row, status);
+      return {
+        ...info,
+        category,
+        status,
+        categoryLabel: category.charAt(0).toUpperCase() + category.slice(1),
+        title: descriptor.title,
+        description: descriptor.description,
+        tone: descriptor.tone,
+        actionable: descriptor.actionable,
+        sortTime: parseNotificationDate(info.date)
+      };
+    });
+}
+
+function notificationToneClasses(tone) {
+  if (tone === "warning") return { icon: "error", iconBg: "bg-error-container", iconText: "text-on-error-container" };
+  if (tone === "waiting") return { icon: "hourglass_top", iconBg: "bg-yellow-50", iconText: "text-yellow-700" };
+  if (tone === "success") return { icon: "task_alt", iconBg: "bg-secondary-container", iconText: "text-on-secondary-container" };
+  return { icon: "notifications_active", iconBg: "bg-primary-container/10", iconText: "text-primary" };
+}
+
+function renderRoleNotifications(errorMessage = "") {
+  if (!notificationList || !notificationCount || !notificationSummary) return;
+  const role = (sessionStorage.getItem("userRole") || "user").toLowerCase();
+  const roleLabel = role === "maintenance" ? "Khusus Maintenance" : `Khusus ${sessionStorage.getItem("userBagian") || "User"}`;
+  if (notificationRoleLabel) notificationRoleLabel.textContent = roleLabel;
+
+  const actionableCount = notificationItems.filter(item => item.actionable).length;
+  notificationCount.textContent = actionableCount > 99 ? "99+" : String(actionableCount);
+  notificationCount.classList.toggle("hidden", actionableCount === 0);
+  notificationSummary.textContent = `${notificationItems.length} notifikasi aktif • ${actionableCount} perlu tindakan`;
+
+  if (errorMessage && notificationItems.length === 0) {
+    notificationList.innerHTML = `<div class="p-lg text-center">
+      <span class="material-symbols-outlined text-error text-[28px]">cloud_off</span>
+      <div class="font-body-md text-body-md text-error mt-sm">Notifikasi gagal dimuat.</div>
+      <div class="font-label-md text-[10px] text-outline mt-xs">${escapeHtml(errorMessage)}</div>
+    </div>`;
+    return;
+  }
+
+  if (notificationItems.length === 0) {
+    notificationList.innerHTML = `<div class="p-lg text-center">
+      <span class="material-symbols-outlined text-secondary text-[30px]">notifications_none</span>
+      <div class="font-body-md text-body-md text-on-surface mt-sm">Tidak ada notifikasi aktif.</div>
+      <div class="font-label-md text-[10px] text-outline mt-xs">Semua tiket yang memerlukan perhatian sudah tertangani.</div>
+    </div>`;
+    return;
+  }
+
+  notificationList.innerHTML = notificationItems.slice(0, 30).map(item => {
+    const tone = notificationToneClasses(item.tone);
+    const secondary = item.equipment || item.name || item.description;
+    return `<button type="button" data-notification-category="${item.category}" data-notification-status="${item.status}"
+      class="w-full text-left px-md py-sm border-b border-outline-variant/20 last:border-b-0 hover:bg-surface-container-low transition flex items-start gap-sm">
+      <span class="h-9 w-9 rounded-lg ${tone.iconBg} ${tone.iconText} flex items-center justify-center shrink-0 mt-0.5">
+        <span class="material-symbols-outlined text-[19px]">${tone.icon}</span>
+      </span>
+      <span class="min-w-0 flex-1">
+        <span class="flex items-center justify-between gap-sm">
+          <span class="font-body-md text-[13px] font-semibold text-on-surface truncate">${escapeHtml(item.title)}</span>
+          <span class="font-label-md text-[9px] uppercase text-outline shrink-0">${escapeHtml(item.categoryLabel)}</span>
+        </span>
+        <span class="block font-body-md text-[12px] text-on-surface-variant mt-0.5 truncate"><strong>${escapeHtml(item.id)}</strong>${secondary ? ` — ${escapeHtml(secondary)}` : ""}</span>
+        <span class="block font-label-md text-[9px] text-outline mt-1">${escapeHtml(item.date || item.description)}</span>
+      </span>
+    </button>`;
+  }).join("");
+
+  notificationList.querySelectorAll("[data-notification-category]").forEach(button => {
+    button.addEventListener("click", () => {
+      navigateFromNotification(button.dataset.notificationCategory, button.dataset.notificationStatus);
+    });
+  });
+}
+
+async function refreshRoleNotifications(silent = false) {
+  if (sessionStorage.getItem("loggedIn") !== "true" || notificationRefreshInFlight) return;
+  notificationRefreshInFlight = true;
+  if (!silent && notificationList) {
+    notificationList.innerHTML = `<div class="p-lg text-center font-body-md text-body-md text-outline flex items-center justify-center gap-sm">
+      <span class="material-symbols-outlined animate-spin text-[20px]">progress_activity</span> Memuat notifikasi...
+    </div>`;
+  }
+
+  const role = (sessionStorage.getItem("userRole") || "user").toLowerCase();
+  const bagian = sessionStorage.getItem("userBagian") || "";
+  const categories = ["mechanical", "electrical", "modification"];
+  const descriptors = role === "maintenance"
+    ? [
+        {
+          status: "pending",
+          title: "Pending Approval",
+          description: "WO baru memerlukan persetujuan Maintenance",
+          tone: "action",
+          actionable: true
+        },
+        {
+          status: "approved",
+          title: "WO Reopen — Tidak Sesuai",
+          description: "WO dikembalikan oleh user/departemen untuk diperbaiki kembali",
+          tone: "warning",
+          actionable: true,
+          filterRow: isReopenedNotificationRow
+        }
+      ]
+    : [
+        {
+          status: "pending_finished",
+          title: "Verifikasi Pekerjaan",
+          description: "Hasil pekerjaan perlu diverifikasi oleh departemen Anda",
+          tone: "action",
+          actionable: true
+        },
+        {
+          status: "rejected",
+          title: "WO Ditolak",
+          description: "WO milik departemen Anda ditolak oleh Maintenance",
+          tone: "warning",
+          actionable: true
+        },
+        {
+          status: "finished",
+          title: "WO Selesai",
+          description: "WO milik departemen Anda telah selesai",
+          tone: "success",
+          actionable: false
+        }
+      ];
+
+  try {
+    const jobs = [];
+    descriptors.forEach(descriptor => {
+      categories.forEach(category => {
+        jobs.push(fetchNotificationGroup(category, descriptor.status, role, bagian, descriptor));
+      });
+    });
+    const results = await Promise.allSettled(jobs);
+    notificationItems = results
+      .filter(result => result.status === "fulfilled")
+      .flatMap(result => result.value)
+      .sort((a, b) => b.sortTime - a.sortTime || a.id.localeCompare(b.id));
+
+    const failedCount = results.filter(result => result.status === "rejected").length;
+    lastNotificationRefreshAt = new Date();
+    if (notificationUpdatedAt) notificationUpdatedAt.textContent = `Update ${formatSyncClock(lastNotificationRefreshAt)} WIB`;
+    renderRoleNotifications(failedCount === results.length ? "Semua sumber notifikasi gagal diakses." : "");
+  } catch (error) {
+    renderRoleNotifications(error.message || "Gagal memuat notifikasi");
+  } finally {
+    notificationRefreshInFlight = false;
+  }
+}
+
+function navigateFromNotification(category, status) {
+  if (notificationDropdown) notificationDropdown.classList.add("hidden");
+  if (notificationButton) notificationButton.setAttribute("aria-expanded", "false");
+  activeCategory = category;
+  activeStatus = status;
+  mainBtns.forEach(button => button.classList.toggle("active", button.getAttribute("data-category") === category));
+  subBtns.forEach(button => button.classList.toggle("active", button.getAttribute("data-status") === status));
+  showApplicationView(category);
+  fetchData();
+}
+
+function startRoleNotificationSystem() {
+  stopRoleNotificationSystem();
+  refreshRoleNotifications(false);
+  notificationRefreshTimer = setInterval(() => refreshRoleNotifications(true), 120000);
+}
+
+function stopRoleNotificationSystem() {
+  if (notificationRefreshTimer) clearInterval(notificationRefreshTimer);
+  notificationRefreshTimer = null;
+  notificationItems = [];
+  if (notificationCount) notificationCount.classList.add("hidden");
+  if (notificationDropdown) notificationDropdown.classList.add("hidden");
+}
+
+if (notificationButton) {
+  notificationButton.addEventListener("click", event => {
+    event.stopPropagation();
+    const willOpen = notificationDropdown.classList.contains("hidden");
+    notificationDropdown.classList.toggle("hidden", !willOpen);
+    notificationButton.setAttribute("aria-expanded", String(willOpen));
+    if (willOpen) refreshRoleNotifications(false);
+  });
+}
+if (notificationRefreshButton) {
+  notificationRefreshButton.addEventListener("click", event => {
+    event.stopPropagation();
+    refreshRoleNotifications(false);
+  });
+}
+if (notificationDropdown) notificationDropdown.addEventListener("click", event => event.stopPropagation());
+document.addEventListener("click", () => {
+  if (notificationDropdown) notificationDropdown.classList.add("hidden");
+  if (notificationButton) notificationButton.setAttribute("aria-expanded", "false");
+});
+
+
+// ============================================================================
+// STATUS SINKRONISASI DINAMIS
+// ============================================================================
+const syncStatusBadge = document.getElementById("sync-status-badge");
+const syncStatusPing = document.getElementById("sync-status-ping");
+const syncStatusDot = document.getElementById("sync-status-dot");
+const syncStatusText = document.getElementById("sync-status-text");
+
+let syncRequestCounter = 0;
+let activeSyncRequests = new Map();
+let lastSuccessfulSyncAt = null;
+let lastSyncError = "";
+
+function formatSyncClock(date) {
+  return new Intl.DateTimeFormat("id-ID", {
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: false
+  }).format(date);
+}
+
+function renderSyncStatus(state, detail = "") {
+  if (!syncStatusBadge || !syncStatusDot || !syncStatusText || !syncStatusPing) return;
+
+  const themes = {
+    waiting: { bg: "#eff4ff", fg: "#434655", dot: "#737686", text: "Menunggu sinkronisasi" },
+    syncing: { bg: "#fff7ed", fg: "#b45309", dot: "#f59e0b", text: "Syncing..." },
+    synced:  { bg: "#dcfce7", fg: "#166534", dot: "#16a34a", text: "Synced" },
+    error:   { bg: "#fee2e2", fg: "#991b1b", dot: "#dc2626", text: "Not Sync" },
+    offline: { bg: "#f3f4f6", fg: "#4b5563", dot: "#6b7280", text: "Offline" }
+  };
+  const theme = themes[state] || themes.waiting;
+
+  syncStatusBadge.style.backgroundColor = theme.bg;
+  syncStatusBadge.style.color = theme.fg;
+  syncStatusDot.style.backgroundColor = theme.dot;
+  syncStatusPing.style.backgroundColor = theme.dot;
+
+  const isSyncing = state === "syncing";
+  syncStatusPing.classList.toggle("hidden", !isSyncing);
+  syncStatusPing.classList.toggle("animate-ping", isSyncing);
+
+  let label = theme.text;
+  if (state === "synced" && lastSuccessfulSyncAt) {
+    label += ` • ${formatSyncClock(lastSuccessfulSyncAt)}`;
+  }
+  syncStatusText.textContent = label;
+
+  const tooltipParts = [theme.text];
+  if (detail) tooltipParts.push(detail);
+  if (lastSuccessfulSyncAt) tooltipParts.push(`Sinkronisasi berhasil terakhir: ${lastSuccessfulSyncAt.toLocaleString("id-ID")}`);
+  if (lastSyncError && (state === "error" || state === "offline")) tooltipParts.push(`Error: ${lastSyncError}`);
+  syncStatusBadge.title = tooltipParts.join("\n");
+}
+
+function beginSyncStatus(label = "Mengambil data terbaru") {
+  const requestId = ++syncRequestCounter;
+  activeSyncRequests.set(requestId, label);
+  renderSyncStatus("syncing", label);
+  return requestId;
+}
+
+function completeSyncStatus(requestId, detail = "Data terbaru berhasil dimuat") {
+  activeSyncRequests.delete(requestId);
+  lastSuccessfulSyncAt = new Date();
+  lastSyncError = "";
+
+  if (activeSyncRequests.size > 0) {
+    const currentLabel = activeSyncRequests.values().next().value || "Mengambil data terbaru";
+    renderSyncStatus("syncing", currentLabel);
+  } else {
+    renderSyncStatus("synced", detail);
+  }
+}
+
+function failSyncStatus(requestId, error) {
+  activeSyncRequests.delete(requestId);
+  lastSyncError = error && error.message ? error.message : String(error || "Koneksi ke server gagal");
+
+  if (!navigator.onLine) {
+    renderSyncStatus("offline", "Perangkat tidak terhubung ke internet");
+  } else if (activeSyncRequests.size > 0) {
+    const currentLabel = activeSyncRequests.values().next().value || "Mengambil data terbaru";
+    renderSyncStatus("syncing", currentLabel);
+  } else {
+    renderSyncStatus("error", lastSyncError);
+  }
+}
+
+function refreshCurrentViewAfterReconnect() {
+  if (sessionStorage.getItem("loggedIn") !== "true") return;
+  if (activeCategory === "dashboard") fetchDashboardData();
+  else if (activeCategory === "equipment_history") fetchEquipmentHistory();
+  else fetchData();
+  refreshRoleNotifications(true);
+}
+
+window.addEventListener("offline", () => {
+  lastSyncError = "Koneksi internet terputus";
+  renderSyncStatus("offline", "Perangkat tidak terhubung ke internet");
+});
+
+window.addEventListener("online", () => {
+  renderSyncStatus("waiting", "Koneksi kembali tersedia, memuat ulang data...");
+  refreshCurrentViewAfterReconnect();
+});
+
+renderSyncStatus(navigator.onLine ? "waiting" : "offline");
 
 // ============================================================================
 // STATE APLIKASI
@@ -581,6 +1073,7 @@ function findColumnsIndex(header) {
 // AMBIL DATA
 // ============================================================================
 async function fetchData() {
+  const syncRequestId = beginSyncStatus("Memuat data Work Order");
   panel.innerHTML = `<div class="text-center py-lg font-body-md text-body-md text-outline">Memuat data...</div>`;
   currentDataObjects = [];
   globalHeaders = [];
@@ -643,12 +1136,15 @@ async function fetchData() {
       summaryCountEl.textContent = "00";
       summaryLabelEl.textContent = "0 TIKET DITEMUKAN";
       panel.innerHTML = `<div class="text-center py-lg font-body-md text-body-md text-error">Data kosong atau tidak ditemukan.</div>`;
+      completeSyncStatus(syncRequestId, "Data Work Order berhasil diperbarui");
       return;
     }
 
     renderData();
+    completeSyncStatus(syncRequestId, "Data Work Order berhasil diperbarui");
 
   } catch (err) {
+    failSyncStatus(syncRequestId, err);
     panelTitleEl.textContent = "Data Error";
     panel.innerHTML = `<div class="text-center py-lg font-body-md text-body-md text-error">Gagal memuat: ${escapeHtml(err.message)}</div>`;
   }
@@ -1698,6 +2194,7 @@ async function executeAction(actionType, extra) {
     msgBox.className = "text-center mt-sm font-label-md text-label-md text-outline";
   }
 
+  const syncRequestId = beginSyncStatus("Menyimpan perubahan Work Order");
   try {
     const res = await fetch(LOGIN_API_URL, {
       method: "POST",
@@ -1721,6 +2218,7 @@ async function executeAction(actionType, extra) {
     const result = await res.json();
 
     if (result.success) {
+      completeSyncStatus(syncRequestId, "Perubahan Work Order berhasil disimpan");
       if (msgBox) {
         msgBox.textContent = "Berhasil! Data telah diperbarui.";
         msgBox.className = "text-center mt-sm font-label-md text-label-md text-secondary";
@@ -1729,8 +2227,10 @@ async function executeAction(actionType, extra) {
         modalOverlay.style.display = "none";
         formModalOverlay.style.display = "none";
         fetchData();
+        refreshRoleNotifications(true);
       }, 1500);
     } else {
+      failSyncStatus(syncRequestId, new Error(result.message || "Perubahan Work Order gagal disimpan"));
       if (msgBox) {
         msgBox.textContent = "Gagal: " + result.message;
         msgBox.className = "text-center mt-sm font-label-md text-label-md text-error";
@@ -1738,6 +2238,7 @@ async function executeAction(actionType, extra) {
       buttons.forEach(b => b.disabled = false);
     }
   } catch (err) {
+    failSyncStatus(syncRequestId, err);
     if (msgBox) {
       msgBox.textContent = "Gagal menghubungi server.";
       msgBox.className = "text-center mt-sm font-label-md text-label-md text-error";
@@ -2385,6 +2886,7 @@ async function fetchDashboardData() {
     alert("Pilih tanggal akhir rentang.");
     return;
   }
+  const syncRequestId = beginSyncStatus("Memuat Dashboard Maintenance");
   const loading = document.getElementById("dashboard-loading");
   const errorEl = document.getElementById("dashboard-error");
   loading.classList.remove("hidden");
@@ -2447,7 +2949,9 @@ async function fetchDashboardData() {
         } } }
       }
     });
+    completeSyncStatus(syncRequestId, "Dashboard berhasil diperbarui");
   } catch (error) {
+    failSyncStatus(syncRequestId, error);
     errorEl.textContent = error.message;
     errorEl.classList.remove("hidden");
   } finally {
@@ -2618,6 +3122,7 @@ async function submitEquipmentServiceCost(ticket, input) {
   saveButton.disabled = true;
   saveButton.textContent = "Menyimpan...";
   message.textContent = "";
+  const syncRequestId = beginSyncStatus("Menyimpan Biaya Jasa");
   try {
     const response = await fetch(LOGIN_API_URL, {
       method: "POST",
@@ -2634,9 +3139,11 @@ async function submitEquipmentServiceCost(ticket, input) {
     if (!response.ok) throw new Error(`Server mengembalikan status ${response.status}.`);
     const result = await response.json();
     if (!result.success) throw new Error(result.message || "Gagal menyimpan Biaya Jasa.");
+    completeSyncStatus(syncRequestId, "Biaya Jasa berhasil disimpan");
     closeFormModal();
     await fetchEquipmentHistory();
   } catch (error) {
+    failSyncStatus(syncRequestId, error);
     message.textContent = error.message;
     message.className = "text-center text-[12px] text-error";
   } finally {
@@ -2665,7 +3172,8 @@ async function fetchEquipmentHistory() {
     return;
   }
 
-  statusEl.textContent = "Menyinkronkan Equipment History dari Master WO...";
+  const syncRequestId = beginSyncStatus("Memuat Equipment History");
+  statusEl.textContent = "Memuat Equipment History terbaru dari Master WO...";
   statusEl.className = "font-body-md text-body-md text-outline";
   try {
     const params = new URLSearchParams({
@@ -2691,15 +3199,16 @@ async function fetchEquipmentHistory() {
     const syncedAt = result.syncSummary?.updatedAt || "-";
     statusEl.textContent = `${shownEquipment} equipment dan ${shownWo} WO ditampilkan (${equipmentHistoryFilterLabel()}). Filter: Tanggal Approved. Sinkron sheet: ${syncedAt}`;
     statusEl.className = "font-body-md text-body-md text-on-surface-variant";
+    completeSyncStatus(syncRequestId, "Equipment History berhasil diperbarui");
 
     if (result.syncWarning) console.warn("Peringatan sinkronisasi Equipment History:", result.syncWarning);
   } catch (error) {
+    failSyncStatus(syncRequestId, error);
     statusEl.textContent = `Gagal: ${error.message}`;
     statusEl.className = "font-body-md text-body-md text-error";
   }
 }
 
-document.getElementById("equipment-history-refresh").addEventListener("click", fetchEquipmentHistory);
 document.getElementById("equipment-history-apply-filter").addEventListener("click", fetchEquipmentHistory);
 document.getElementById("equipment-history-search").addEventListener("input", renderEquipmentHistory);
 
@@ -2736,6 +3245,7 @@ if (sessionStorage.getItem("loggedIn") === "true") {
   applyRoleUI(savedRole);
   showApplicationView(activeCategory);
   fetchData();
+  startRoleNotificationSystem();
 }
 
 loginForm.addEventListener("submit", async (e) => {
@@ -2765,6 +3275,7 @@ loginForm.addEventListener("submit", async (e) => {
       applyRoleUI(result.role || "user");
       showApplicationView(activeCategory);
       fetchData();
+      startRoleNotificationSystem();
     } else {
       loginMsg.textContent = result.message || "ID atau password salah.";
     }
@@ -2777,6 +3288,7 @@ loginForm.addEventListener("submit", async (e) => {
 });
 
 document.getElementById("logout-btn").addEventListener("click", () => {
+  stopRoleNotificationSystem();
   sessionStorage.removeItem("loggedIn");
   sessionStorage.removeItem("userRole");
   sessionStorage.removeItem("userBagian");
