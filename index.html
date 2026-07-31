@@ -355,11 +355,29 @@
           <h2 class="font-headline-md text-headline-md text-on-background">Equipment History</h2>
           <p class="font-body-md text-body-md text-on-surface-variant mt-xs">Riwayat WO Finished yang diakumulasikan per Tag Number dan tersinkron otomatis dari Master WO.</p>
         </div>
-        <div class="flex flex-col sm:flex-row gap-sm">
-          <input id="equipment-history-search" type="search" placeholder="Cari Tag Number / Nomor WO / Deskripsi" class="min-w-[280px] px-md py-sm bg-surface rounded-lg border border-outline-variant font-body-md text-body-md outline-none">
-          <button id="equipment-history-refresh" class="px-lg py-sm bg-primary text-white rounded-lg font-body-md text-body-md font-semibold flex items-center justify-center gap-xs">
-            <span class="material-symbols-outlined text-[18px]">sync</span>Sinkronkan
-          </button>
+        <div class="flex flex-col xl:items-end gap-sm w-full md:w-auto">
+          <div class="flex flex-col sm:flex-row flex-wrap gap-sm items-stretch sm:items-center">
+            <select id="equipment-history-filter-type" class="px-md py-sm bg-surface rounded-lg border border-outline-variant font-body-md text-body-md outline-none">
+              <option value="all">Semua Waktu</option>
+              <option value="single">Tanggal Tertentu</option>
+              <option value="range">Rentang Tanggal</option>
+            </select>
+            <div id="equipment-history-date-1-container" class="hidden">
+              <input type="date" id="equipment-history-date-1" class="w-full px-md py-sm bg-surface rounded-lg border border-outline-variant font-body-md text-body-md outline-none">
+            </div>
+            <div id="equipment-history-date-2-container" class="hidden">
+              <input type="date" id="equipment-history-date-2" class="w-full px-md py-sm bg-surface rounded-lg border border-outline-variant font-body-md text-body-md outline-none">
+            </div>
+            <button id="equipment-history-apply-filter" class="px-lg py-sm bg-primary text-white rounded-lg font-body-md text-body-md font-semibold flex items-center justify-center gap-xs">
+              <span class="material-symbols-outlined text-[18px]">filter_list</span>Terapkan
+            </button>
+          </div>
+          <div class="flex flex-col sm:flex-row gap-sm items-stretch sm:items-center w-full">
+            <input id="equipment-history-search" type="search" placeholder="Cari Tag Number / Nomor WO / Deskripsi" class="flex-1 min-w-[280px] px-md py-sm bg-surface rounded-lg border border-outline-variant font-body-md text-body-md outline-none">
+            <button id="equipment-history-refresh" class="px-lg py-sm bg-secondary text-white rounded-lg font-body-md text-body-md font-semibold flex items-center justify-center gap-xs">
+              <span class="material-symbols-outlined text-[18px]">sync</span>Sinkronkan Sheet
+            </button>
+          </div>
         </div>
       </div>
       <div id="equipment-history-status" class="font-body-md text-body-md text-outline"></div>
@@ -2428,6 +2446,24 @@ async function fetchDashboardData() {
 // ============================================================================
 // EQUIPMENT HISTORY KHUSUS MAINTENANCE
 // ============================================================================
+const equipmentHistoryFilterType = document.getElementById("equipment-history-filter-type");
+const equipmentHistoryDate1Container = document.getElementById("equipment-history-date-1-container");
+const equipmentHistoryDate2Container = document.getElementById("equipment-history-date-2-container");
+const equipmentHistoryDate1 = document.getElementById("equipment-history-date-1");
+const equipmentHistoryDate2 = document.getElementById("equipment-history-date-2");
+
+equipmentHistoryFilterType.addEventListener("change", () => {
+  const value = equipmentHistoryFilterType.value;
+  equipmentHistoryDate1Container.classList.toggle("hidden", value === "all");
+  equipmentHistoryDate2Container.classList.toggle("hidden", value !== "range");
+});
+
+function equipmentHistoryFilterLabel() {
+  if (equipmentHistoryFilterType.value === "single") return equipmentHistoryDate1.value || "Tanggal tertentu";
+  if (equipmentHistoryFilterType.value === "range") return `${equipmentHistoryDate1.value || "-"} s/d ${equipmentHistoryDate2.value || "-"}`;
+  return "Semua waktu";
+}
+
 function parseEquipmentCurrency(value) {
   if (value === "" || value === null || value === undefined) return 0;
   if (typeof value === "number") return Number.isFinite(value) ? value : 0;
@@ -2450,7 +2486,10 @@ function renderEquipmentHistory() {
   const head = document.getElementById("equipment-history-head");
   const body = document.getElementById("equipment-history-body");
   const displayHeaders = [...equipmentHistoryHeaders, "Aksi"];
-  head.innerHTML = `<tr>${displayHeaders.map(header => `<th class="px-md py-sm text-[12px] font-semibold whitespace-nowrap">${escapeHtml(header)}</th>`).join("")}</tr>`;
+  head.innerHTML = `<tr>${displayHeaders.map(header => {
+    const stickyClass = header === "Aksi" ? " sticky right-0 z-10 bg-[#5B3F92]" : "";
+    return `<th class="px-md py-sm text-[12px] font-semibold whitespace-nowrap${stickyClass}">${escapeHtml(header)}</th>`;
+  }).join("")}</tr>`;
 
   const visibleRows = equipmentHistoryRows
     .map((row, originalIndex) => ({ row, originalIndex }))
@@ -2463,8 +2502,8 @@ function renderEquipmentHistory() {
   body.innerHTML = visibleRows.map(item => `
     <tr class="hover:bg-surface-container-low/60">
       ${equipmentHistoryHeaders.map((header, index) => `<td class="px-md py-sm text-[12px] align-top whitespace-pre-wrap">${escapeHtml(String(formatEquipmentHistoryValue(item.row[index], header)))}</td>`).join("")}
-      <td class="px-md py-sm align-top whitespace-nowrap">
-        <button type="button" data-equipment-edit-index="${item.originalIndex}" class="px-sm py-xs rounded-lg bg-primary text-white text-[11px] font-semibold hover:opacity-90 inline-flex items-center gap-1">
+      <td class="px-md py-sm align-top whitespace-nowrap sticky right-0 z-[5] bg-white border-l border-outline-variant/30">
+        <button type="button" data-equipment-edit-index="${item.originalIndex}" class="px-sm py-xs rounded-lg bg-primary text-white text-[11px] font-semibold hover:opacity-90 inline-flex items-center gap-1 shadow-sm">
           <span class="material-symbols-outlined text-[15px]">edit</span>Edit Biaya Jasa
         </button>
       </td>
@@ -2563,24 +2602,58 @@ async function submitEquipmentServiceCost(tagNumber, input) {
 async function fetchEquipmentHistory() {
   if ((sessionStorage.getItem("userRole") || "").toLowerCase() !== "maintenance") return;
   const statusEl = document.getElementById("equipment-history-status");
+
+  if (equipmentHistoryFilterType.value !== "all" && !equipmentHistoryDate1.value) {
+    statusEl.textContent = "Pilih tanggal terlebih dahulu.";
+    statusEl.className = "font-body-md text-body-md text-error";
+    return;
+  }
+  if (equipmentHistoryFilterType.value === "range" && !equipmentHistoryDate2.value) {
+    statusEl.textContent = "Pilih tanggal akhir rentang.";
+    statusEl.className = "font-body-md text-body-md text-error";
+    return;
+  }
+  if (equipmentHistoryFilterType.value === "range" && equipmentHistoryDate2.value < equipmentHistoryDate1.value) {
+    statusEl.textContent = "Tanggal akhir tidak boleh lebih awal daripada tanggal mulai.";
+    statusEl.className = "font-body-md text-body-md text-error";
+    return;
+  }
+
   statusEl.textContent = "Menyinkronkan Equipment History dari Master WO...";
+  statusEl.className = "font-body-md text-body-md text-outline";
   try {
-    const params = new URLSearchParams({ mode: "equipment_history", role: "maintenance", _: Date.now() });
+    const params = new URLSearchParams({
+      mode: "equipment_history",
+      role: "maintenance",
+      filterType: equipmentHistoryFilterType.value,
+      date1: equipmentHistoryDate1.value || "",
+      date2: equipmentHistoryDate2.value || "",
+      _: Date.now()
+    });
     const response = await fetch(`${LOGIN_API_URL}?${params.toString()}`);
     if (!response.ok) throw new Error(`Server mengembalikan status ${response.status}. Pastikan backend terbaru sudah di-deploy.`);
     const result = await response.json();
     if (!result.success) throw new Error(result.message || "Gagal memuat Equipment History.");
+
     equipmentHistoryHeaders = result.headers || [];
     equipmentHistoryRows = result.rows || [];
     renderEquipmentHistory();
-    const totalWo = result.syncSummary?.totalWo ?? 0;
-    statusEl.textContent = `${equipmentHistoryRows.length} equipment dan ${totalWo} WO ditemukan. Sinkron terakhir: ${result.syncSummary?.updatedAt || "-"}`;
+
+    const shownEquipment = result.filteredSummary?.equipment ?? equipmentHistoryRows.length;
+    const shownWo = result.filteredSummary?.totalWo ?? result.syncSummary?.totalWo ?? 0;
+    const syncedAt = result.syncSummary?.updatedAt || "-";
+    statusEl.textContent = `${shownEquipment} equipment dan ${shownWo} WO ditampilkan (${equipmentHistoryFilterLabel()}). Sinkron sheet: ${syncedAt}`;
+    statusEl.className = "font-body-md text-body-md text-on-surface-variant";
+
+    if (result.syncWarning) console.warn("Peringatan sinkronisasi Equipment History:", result.syncWarning);
   } catch (error) {
     statusEl.textContent = `Gagal: ${error.message}`;
+    statusEl.className = "font-body-md text-body-md text-error";
   }
 }
 
 document.getElementById("equipment-history-refresh").addEventListener("click", fetchEquipmentHistory);
+document.getElementById("equipment-history-apply-filter").addEventListener("click", fetchEquipmentHistory);
 document.getElementById("equipment-history-search").addEventListener("input", renderEquipmentHistory);
 
 // ============================================================================
