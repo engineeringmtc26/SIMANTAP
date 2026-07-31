@@ -341,7 +341,7 @@
           <div class="h-[300px]"><canvas id="chart-category-wo"></canvas></div>
         </div>
         <div class="bg-white rounded-xl custom-shadow border border-outline-variant/30 p-md md:p-lg xl:col-span-2">
-          <h3 class="font-headline-sm text-headline-sm mb-md">10 Biaya Perbaikan Terbanyak</h3>
+          <h3 class="font-headline-sm text-headline-sm mb-md">10 Equipment dengan Biaya Perbaikan Terbesar</h3>
           <div class="h-[420px]"><canvas id="chart-top-costs"></canvas></div>
         </div>
       </div>
@@ -353,7 +353,7 @@
       <div class="flex flex-col md:flex-row md:items-center justify-between gap-md bg-surface-container-lowest p-md rounded-xl custom-shadow border border-outline-variant/30">
         <div>
           <h2 class="font-headline-md text-headline-md text-on-background">Equipment History</h2>
-          <p class="font-body-md text-body-md text-on-surface-variant mt-xs">Riwayat WO Finished yang tersinkron otomatis dari Master WO.</p>
+          <p class="font-body-md text-body-md text-on-surface-variant mt-xs">Riwayat WO Finished yang diakumulasikan per Tag Number dan tersinkron otomatis dari Master WO.</p>
         </div>
         <div class="flex flex-col sm:flex-row gap-sm">
           <input id="equipment-history-search" type="search" placeholder="Cari Tag Number / Nomor WO / Deskripsi" class="min-w-[280px] px-md py-sm bg-surface rounded-lg border border-outline-variant font-body-md text-body-md outline-none">
@@ -2408,7 +2408,13 @@ async function fetchDashboardData() {
         ...commonOptions,
         indexAxis: "y",
         scales: { x: { beginAtZero: true, ticks: { callback: value => rupiahForChart(value) } } },
-        plugins: { legend: { display: false }, tooltip: { callbacks: { label: context => rupiahForChart(context.raw) } } }
+        plugins: { legend: { display: false }, tooltip: { callbacks: {
+          label: context => `Total: ${rupiahForChart(context.raw)}`,
+          afterLabel: context => {
+            const item = topCosts[context.dataIndex] || {};
+            return [`Material: ${rupiahForChart(item.material || 0)}`, `Jasa: ${rupiahForChart(item.service || 0)}`];
+          }
+        } } }
       }
     });
   } catch (error) {
@@ -2422,30 +2428,136 @@ async function fetchDashboardData() {
 // ============================================================================
 // EQUIPMENT HISTORY KHUSUS MAINTENANCE
 // ============================================================================
+function parseEquipmentCurrency(value) {
+  if (value === "" || value === null || value === undefined) return 0;
+  if (typeof value === "number") return Number.isFinite(value) ? value : 0;
+  return Number(String(value).replace(/Rp/gi, "").replace(/\./g, "").replace(/,/g, ".").replace(/[^0-9.-]/g, "")) || 0;
+}
+
 function formatEquipmentHistoryValue(value, columnName) {
   if (["Biaya Material", "Biaya Jasa", "Total Biaya"].includes(columnName)) {
-    if (value === "" || value === null || value === undefined) return "-";
-    return rupiahForChart(Number(String(value).replace(/[^0-9.-]/g, "")) || 0);
+    return rupiahForChart(parseEquipmentCurrency(value));
   }
   return value === "" || value === null || value === undefined ? "-" : value;
+}
+
+function equipmentColumnIndex(columnName) {
+  return equipmentHistoryHeaders.findIndex(header => header.toLowerCase().trim() === columnName.toLowerCase().trim());
 }
 
 function renderEquipmentHistory() {
   const query = document.getElementById("equipment-history-search").value.trim().toLowerCase();
   const head = document.getElementById("equipment-history-head");
   const body = document.getElementById("equipment-history-body");
-  head.innerHTML = `<tr>${equipmentHistoryHeaders.map(header => `<th class="px-md py-sm text-[12px] font-semibold whitespace-nowrap">${escapeHtml(header)}</th>`).join("")}</tr>`;
+  const displayHeaders = [...equipmentHistoryHeaders, "Aksi"];
+  head.innerHTML = `<tr>${displayHeaders.map(header => `<th class="px-md py-sm text-[12px] font-semibold whitespace-nowrap">${escapeHtml(header)}</th>`).join("")}</tr>`;
 
-  const visibleRows = equipmentHistoryRows.filter(row => !query || row.join(" ").toLowerCase().includes(query));
+  const visibleRows = equipmentHistoryRows
+    .map((row, originalIndex) => ({ row, originalIndex }))
+    .filter(item => !query || item.row.join(" ").toLowerCase().includes(query));
   if (visibleRows.length === 0) {
-    body.innerHTML = `<tr><td colspan="${Math.max(equipmentHistoryHeaders.length, 1)}" class="px-md py-xl text-center text-outline">Belum ada data Equipment History.</td></tr>`;
+    body.innerHTML = `<tr><td colspan="${Math.max(displayHeaders.length, 1)}" class="px-md py-xl text-center text-outline">Belum ada data Equipment History.</td></tr>`;
     return;
   }
-  body.innerHTML = visibleRows.map(row => `
+
+  body.innerHTML = visibleRows.map(item => `
     <tr class="hover:bg-surface-container-low/60">
-      ${equipmentHistoryHeaders.map((header, index) => `<td class="px-md py-sm text-[12px] align-top whitespace-pre-wrap">${escapeHtml(String(formatEquipmentHistoryValue(row[index], header)))}</td>`).join("")}
+      ${equipmentHistoryHeaders.map((header, index) => `<td class="px-md py-sm text-[12px] align-top whitespace-pre-wrap">${escapeHtml(String(formatEquipmentHistoryValue(item.row[index], header)))}</td>`).join("")}
+      <td class="px-md py-sm align-top whitespace-nowrap">
+        <button type="button" data-equipment-edit-index="${item.originalIndex}" class="px-sm py-xs rounded-lg bg-primary text-white text-[11px] font-semibold hover:opacity-90 inline-flex items-center gap-1">
+          <span class="material-symbols-outlined text-[15px]">edit</span>Edit Biaya Jasa
+        </button>
+      </td>
     </tr>
   `).join("");
+
+  body.querySelectorAll("button[data-equipment-edit-index]").forEach(button => {
+    button.addEventListener("click", () => openEquipmentServiceCostForm(Number(button.dataset.equipmentEditIndex)));
+  });
+}
+
+function openEquipmentServiceCostForm(rowIndex) {
+  const row = equipmentHistoryRows[rowIndex];
+  if (!row) return;
+  const tagIdx = equipmentColumnIndex("Tag Number");
+  const materialIdx = equipmentColumnIndex("Biaya Material");
+  const serviceIdx = equipmentColumnIndex("Biaya Jasa");
+  const totalIdx = equipmentColumnIndex("Total Biaya");
+  const tagNumber = String(row[tagIdx] || "").trim();
+  const materialCost = parseEquipmentCurrency(row[materialIdx]);
+  const serviceCost = parseEquipmentCurrency(row[serviceIdx]);
+  const totalCost = parseEquipmentCurrency(row[totalIdx]);
+
+  formModalTitle.textContent = `Edit Biaya Jasa — ${tagNumber}`;
+  formModalBody.innerHTML = `
+    <div class="space-y-md">
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-sm">
+        <div class="p-md rounded-lg bg-surface-container-low border border-outline-variant/30">
+          <div class="font-label-md text-[10px] uppercase tracking-wider text-outline">Biaya Material</div>
+          <div class="mt-xs font-semibold text-on-surface">${rupiahForChart(materialCost)}</div>
+        </div>
+        <div class="p-md rounded-lg bg-surface-container-low border border-outline-variant/30">
+          <div class="font-label-md text-[10px] uppercase tracking-wider text-outline">Total Saat Ini</div>
+          <div class="mt-xs font-semibold text-on-surface" id="equipment-service-total-preview">${rupiahForChart(totalCost)}</div>
+        </div>
+      </div>
+      <div>
+        <label class="block font-label-md text-[10px] md:text-label-md uppercase tracking-wider text-outline mb-xs">Biaya Jasa</label>
+        <input type="number" min="0" step="1" id="equipment-service-cost-input" value="${serviceCost}" class="w-full px-md py-sm bg-surface rounded-lg border border-outline-variant focus:ring-primary focus:border-primary font-body-md text-body-md outline-none">
+        <p class="mt-xs text-[11px] text-outline">Nilai ini disimpan per Tag Number dan tidak hilang saat Equipment History disinkronkan ulang.</p>
+      </div>
+      <div class="flex flex-col sm:flex-row gap-sm pt-md border-t border-dashed border-outline-variant">
+        <button type="button" onclick="closeFormModal()" class="flex-1 px-md py-sm rounded-lg border border-outline-variant text-on-surface-variant font-semibold">Batal</button>
+        <button type="button" id="equipment-service-save" class="flex-1 px-md py-sm rounded-lg bg-primary text-white font-semibold">Simpan</button>
+      </div>
+      <div id="equipment-service-message" class="text-center text-[12px] text-outline"></div>
+    </div>
+  `;
+  formModalOverlay.style.display = "flex";
+
+  const input = document.getElementById("equipment-service-cost-input");
+  input.addEventListener("input", () => {
+    document.getElementById("equipment-service-total-preview").textContent = rupiahForChart(materialCost + (Number(input.value) || 0));
+  });
+  document.getElementById("equipment-service-save").addEventListener("click", () => submitEquipmentServiceCost(tagNumber, input));
+}
+
+async function submitEquipmentServiceCost(tagNumber, input) {
+  const serviceCost = Number(input.value);
+  if (!Number.isFinite(serviceCost) || serviceCost < 0) {
+    alert("Biaya Jasa harus berupa angka nol atau lebih besar.");
+    return;
+  }
+  const saveButton = document.getElementById("equipment-service-save");
+  const message = document.getElementById("equipment-service-message");
+  saveButton.disabled = true;
+  saveButton.textContent = "Menyimpan...";
+  message.textContent = "";
+  try {
+    const response = await fetch(LOGIN_API_URL, {
+      method: "POST",
+      headers: { "Content-Type": "text/plain;charset=utf-8" },
+      body: JSON.stringify({
+        type: "action",
+        action: "update_equipment_service_cost",
+        role: sessionStorage.getItem("userRole") || "",
+        tagNumber,
+        biayaJasa: serviceCost
+      })
+    });
+    if (!response.ok) throw new Error(`Server mengembalikan status ${response.status}.`);
+    const result = await response.json();
+    if (!result.success) throw new Error(result.message || "Gagal menyimpan Biaya Jasa.");
+    closeFormModal();
+    await fetchEquipmentHistory();
+    if (activeCategory === "dashboard") await fetchDashboardData();
+  } catch (error) {
+    message.textContent = error.message;
+    message.className = "text-center text-[12px] text-error";
+  } finally {
+    saveButton.disabled = false;
+    saveButton.textContent = "Simpan";
+  }
 }
 
 async function fetchEquipmentHistory() {
@@ -2455,12 +2567,14 @@ async function fetchEquipmentHistory() {
   try {
     const params = new URLSearchParams({ mode: "equipment_history", role: "maintenance", _: Date.now() });
     const response = await fetch(`${LOGIN_API_URL}?${params.toString()}`);
+    if (!response.ok) throw new Error(`Server mengembalikan status ${response.status}. Pastikan backend terbaru sudah di-deploy.`);
     const result = await response.json();
     if (!result.success) throw new Error(result.message || "Gagal memuat Equipment History.");
     equipmentHistoryHeaders = result.headers || [];
     equipmentHistoryRows = result.rows || [];
     renderEquipmentHistory();
-    statusEl.textContent = `${equipmentHistoryRows.length} riwayat ditemukan. Sinkron terakhir: ${result.syncSummary?.updatedAt || "-"}`;
+    const totalWo = result.syncSummary?.totalWo ?? 0;
+    statusEl.textContent = `${equipmentHistoryRows.length} equipment dan ${totalWo} WO ditemukan. Sinkron terakhir: ${result.syncSummary?.updatedAt || "-"}`;
   } catch (error) {
     statusEl.textContent = `Gagal: ${error.message}`;
   }
