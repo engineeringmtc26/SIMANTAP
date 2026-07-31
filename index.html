@@ -3,6 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="referrer" content="no-referrer">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com https://cdnjs.cloudflare.com https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com data:; img-src 'self' data: blob: https:; connect-src https://script.google.com https://script.googleusercontent.com; object-src 'none'; base-uri 'none'; form-action 'self'; upgrade-insecure-requests">
 <title>SIMANTAP - Work Order Dashboard</title>
 
 <!-- Tailwind CSS -->
@@ -477,6 +479,83 @@ const LOGIN_API_URL = "https://script.google.com/macros/s/AKfycby0zizP0bAHVGVUWk
 
 
 // ============================================================================
+// CLIENT API SECURITY
+// ============================================================================
+const SESSION_TOKEN_KEY = "simantapSessionToken";
+const SESSION_EXPIRES_KEY = "simantapSessionExpiresAt";
+let sessionExpiryHandling = false;
+
+function createIdempotencyKey() {
+  if (window.crypto && typeof window.crypto.randomUUID === "function") {
+    return window.crypto.randomUUID();
+  }
+  const random = new Uint32Array(4);
+  if (window.crypto && window.crypto.getRandomValues) window.crypto.getRandomValues(random);
+  return `req-${Date.now()}-${Array.from(random).join("-")}`;
+}
+
+function clearLocalSession() {
+  ["loggedIn", "userId", "userRole", "userBagian", SESSION_TOKEN_KEY, SESSION_EXPIRES_KEY]
+    .forEach(key => sessionStorage.removeItem(key));
+}
+
+function handleExpiredSession(message) {
+  if (sessionExpiryHandling) return;
+  sessionExpiryHandling = true;
+  stopRoleNotificationSystem();
+  clearLocalSession();
+  appContent.style.display = "none";
+  loginScreen.style.display = "flex";
+  loginMsg.textContent = message || "Sesi berakhir. Silakan login kembali.";
+  setTimeout(() => { sessionExpiryHandling = false; }, 500);
+}
+
+async function apiRequest(payload, options = {}) {
+  const body = { ...payload };
+  if (options.auth !== false) {
+    const token = sessionStorage.getItem(SESSION_TOKEN_KEY) || "";
+    if (!token) {
+      handleExpiredSession("Sesi tidak tersedia. Silakan login kembali.");
+      throw new Error("Sesi tidak tersedia.");
+    }
+    body.sessionToken = token;
+  }
+  if (body.type === "action" && !body.idempotencyKey) {
+    body.idempotencyKey = createIdempotencyKey();
+  }
+
+  const response = await fetch(LOGIN_API_URL, {
+    method: "POST",
+    headers: { "Content-Type": "text/plain;charset=utf-8" },
+    body: JSON.stringify(body),
+    cache: "no-store",
+    credentials: "omit",
+    referrerPolicy: "no-referrer"
+  });
+  if (!response.ok) throw new Error(`Server mengembalikan status ${response.status}.`);
+  const result = await response.json();
+  if (!result.success && (result.code === "UNAUTHENTICATED" || result.code === "FORBIDDEN" && options.logoutOnForbidden)) {
+    handleExpiredSession(result.message);
+  }
+  return result;
+}
+
+function applyAuthenticatedUser(result) {
+  sessionStorage.setItem("loggedIn", "true");
+  sessionStorage.setItem("userId", result.userId || "");
+  sessionStorage.setItem("userRole", result.role || "user");
+  sessionStorage.setItem("userBagian", result.bagian || "");
+  if (result.sessionToken) sessionStorage.setItem(SESSION_TOKEN_KEY, result.sessionToken);
+  if (result.expiresAt) sessionStorage.setItem(SESSION_EXPIRES_KEY, result.expiresAt);
+
+  const role = result.role || "user";
+  const bagian = result.bagian || "";
+  roleBadgeText.textContent = "Akses: " + role.toUpperCase() + (bagian ? " — " + bagian.toUpperCase() : "");
+  applyRoleUI(role);
+}
+
+
+// ============================================================================
 // JAM WIB DAN NOTIFIKASI BERDASARKAN ROLE
 // ============================================================================
 const wibClockEl = document.getElementById("wib-clock");
@@ -670,17 +749,12 @@ function parseNotificationDate(value) {
 }
 
 async function fetchNotificationGroup(category, status, role, bagian, descriptor) {
-  const params = new URLSearchParams({
+  const result = await apiRequest({
+    type: "query",
     mode: "single",
     category,
-    status,
-    role,
-    bagian,
-    _: Date.now()
+    status
   });
-  const response = await fetch(`${LOGIN_API_URL}?${params.toString()}`);
-  if (!response.ok) throw new Error(`HTTP ${response.status}`);
-  const result = await response.json();
   if (!result.success) throw new Error(result.message || "Gagal mengambil notifikasi");
 
   const headers = result.headers || [];
@@ -1153,16 +1227,11 @@ async function fetchData() {
 
   try {
     if (activeCategory === "master") {
-      const params = new URLSearchParams({
+      const result = await apiRequest({
+        type: "query",
         mode: "master",
-        role: userRole,
-        bagian: userBagian,
-        filterBagian: filterBagianVal,
-        _: Date.now()
+        filterBagian: filterBagianVal
       });
-      const res = await fetch(`${LOGIN_API_URL}?${params.toString()}`);
-      if (!res.ok) throw new Error("Gagal mengambil data master (status " + res.status + ")");
-      const result = await res.json();
       if (!result.success) throw new Error(result.message || "Gagal memuat data master");
 
       if (result.pdfConfig) pdfFormConfig = { ...pdfFormConfig, ...result.pdfConfig };
@@ -1175,18 +1244,13 @@ async function fetchData() {
       }));
 
     } else {
-      const params = new URLSearchParams({
+      const result = await apiRequest({
+        type: "query",
         mode: "single",
         category: activeCategory,
         status: activeStatus,
-        role: userRole,
-        bagian: userBagian,
-        filterBagian: filterBagianVal,
-        _: Date.now()
+        filterBagian: filterBagianVal
       });
-      const res = await fetch(`${LOGIN_API_URL}?${params.toString()}`);
-      if (!res.ok) throw new Error("Gagal mengambil data (status " + res.status + ")");
-      const result = await res.json();
       if (!result.success) throw new Error(result.message || "Gagal memuat data");
 
       if (result.pdfConfig) pdfFormConfig = { ...pdfFormConfig, ...result.pdfConfig };
@@ -1313,7 +1377,7 @@ function renderData() {
       : escapeHtml(item.req || item.name || "-");
 
     return `
-      <div onclick="showModal(${item.originalIndex}, '${item.req}', '${item.itemCat}', '${item.itemStat}')"
+      <div data-ticket-index="${item.originalIndex}" tabindex="0" role="button"
         class="flex flex-col sm:flex-row items-start sm:items-center justify-between p-md bg-white border border-outline-variant/20 rounded-lg hover:border-primary/30 hover:shadow-sm transition-all cursor-pointer group">
         <div class="flex items-center gap-sm md:gap-md w-full sm:w-auto">
           <div class="w-10 h-10 md:w-12 md:h-12 rounded-full bg-surface-container-high flex items-center justify-center text-primary font-bold text-[16px] md:text-headline-sm shrink-0">
@@ -1339,6 +1403,24 @@ function renderData() {
       </div>
     `;
   }).join("");
+
+  panel.querySelectorAll("[data-ticket-index]").forEach(card => {
+    const openTicket = () => {
+      const index = Number(card.dataset.ticketIndex);
+      const item = currentDataObjects[index];
+      if (!item) return;
+      const columns = findColumnsIndex(globalHeaders);
+      const reqId = item.rowData[columns.idIdx] || "";
+      showModal(index, String(reqId), item.category, item.status);
+    };
+    card.addEventListener("click", openTicket);
+    card.addEventListener("keydown", event => {
+      if (event.key === "Enter" || event.key === " ") {
+        event.preventDefault();
+        openTicket();
+      }
+    });
+  });
 }
 
 function escapeHtml(str) {
@@ -2265,26 +2347,18 @@ async function executeAction(actionType, extra) {
 
   const syncRequestId = beginSyncStatus("Menyimpan perubahan Work Order");
   try {
-    const res = await fetch(LOGIN_API_URL, {
-      method: "POST",
-      headers: { "Content-Type": "text/plain;charset=utf-8" },
-      body: JSON.stringify({
-        type: "action",
-        action: actionType,
-        category: targetItemCategory,
-        requestId: targetRequestId,
-        rejectReason: rejectReason,
-        biayaWo: biayaWo,
-        personilMtc: personilMtc,
-        removedPersonilMtc: removedPersonilMtc,
-        status: targetItemStatus,
-        photos: photos,
-        role: sessionStorage.getItem("userRole") || "",
-        bagian: sessionStorage.getItem("userBagian") || ""
-      })
+    const result = await apiRequest({
+      type: "action",
+      action: actionType,
+      category: targetItemCategory,
+      requestId: targetRequestId,
+      rejectReason: rejectReason,
+      biayaWo: biayaWo,
+      personilMtc: personilMtc,
+      removedPersonilMtc: removedPersonilMtc,
+      status: targetItemStatus,
+      photos: photos
     });
-
-    const result = await res.json();
 
     if (result.success) {
       completeSyncStatus(syncRequestId, "Perubahan Work Order berhasil disimpan");
@@ -2962,16 +3036,13 @@ async function fetchDashboardData() {
   errorEl.classList.add("hidden");
 
   try {
-    const params = new URLSearchParams({
+    const result = await apiRequest({
+      type: "query",
       mode: "dashboard",
-      role: "maintenance",
       filterType: dashboardFilterType.value,
       date1: dashboardDate1.value || "",
-      date2: dashboardDate2.value || "",
-      _: Date.now()
+      date2: dashboardDate2.value || ""
     });
-    const response = await fetch(`${LOGIN_API_URL}?${params.toString()}`);
-    const result = await response.json();
     if (!result.success) throw new Error(result.message || "Gagal memuat dashboard.");
 
     document.getElementById("dashboard-total-wo").textContent = result.summary?.totalWo ?? 0;
@@ -3193,20 +3264,13 @@ async function submitEquipmentServiceCost(ticket, input) {
   message.textContent = "";
   const syncRequestId = beginSyncStatus("Menyimpan Biaya Jasa");
   try {
-    const response = await fetch(LOGIN_API_URL, {
-      method: "POST",
-      headers: { "Content-Type": "text/plain;charset=utf-8" },
-      body: JSON.stringify({
-        type: "action",
-        action: "update_equipment_service_cost",
-        role: sessionStorage.getItem("userRole") || "",
-        requestId: ticket.requestId || ticket.nomorWo,
-        nomorWo: ticket.nomorWo || "",
-        biayaJasa: serviceCost
-      })
+    const result = await apiRequest({
+      type: "action",
+      action: "update_equipment_service_cost",
+      requestId: ticket.requestId || ticket.nomorWo,
+      nomorWo: ticket.nomorWo || "",
+      biayaJasa: serviceCost
     });
-    if (!response.ok) throw new Error(`Server mengembalikan status ${response.status}.`);
-    const result = await response.json();
     if (!result.success) throw new Error(result.message || "Gagal menyimpan Biaya Jasa.");
     completeSyncStatus(syncRequestId, "Biaya Jasa berhasil disimpan");
     closeFormModal();
@@ -3245,17 +3309,13 @@ async function fetchEquipmentHistory() {
   statusEl.textContent = "Memuat Equipment History terbaru dari Master WO...";
   statusEl.className = "font-body-md text-body-md text-outline";
   try {
-    const params = new URLSearchParams({
+    const result = await apiRequest({
+      type: "query",
       mode: "equipment_history",
-      role: "maintenance",
       filterType: equipmentHistoryFilterType.value,
       date1: equipmentHistoryDate1.value || "",
-      date2: equipmentHistoryDate2.value || "",
-      _: Date.now()
+      date2: equipmentHistoryDate2.value || ""
     });
-    const response = await fetch(`${LOGIN_API_URL}?${params.toString()}`);
-    if (!response.ok) throw new Error(`Server mengembalikan status ${response.status}. Pastikan backend terbaru sudah di-deploy.`);
-    const result = await response.json();
     if (!result.success) throw new Error(result.message || "Gagal memuat Equipment History.");
 
     equipmentHistoryHeaders = result.headers || [];
@@ -3305,44 +3365,48 @@ function applyRoleUI(role) {
   }
 }
 
-if (sessionStorage.getItem("loggedIn") === "true") {
-  loginScreen.style.display = "none";
-  appContent.style.display = "block";
-  const savedRole = sessionStorage.getItem("userRole") || "USER";
-  const savedBagian = sessionStorage.getItem("userBagian") || "";
-  roleBadgeText.textContent = "Akses: " + savedRole.toUpperCase() + (savedBagian ? " — " + savedBagian.toUpperCase() : "");
-  applyRoleUI(savedRole);
-  showApplicationView(activeCategory);
-  fetchData();
-  startRoleNotificationSystem();
+async function restoreAuthenticatedSession() {
+  const token = sessionStorage.getItem(SESSION_TOKEN_KEY);
+  if (!token) {
+    clearLocalSession();
+    loginScreen.style.display = "flex";
+    appContent.style.display = "none";
+    return;
+  }
+  loginMsg.textContent = "Memeriksa sesi...";
+  try {
+    const result = await apiRequest({ type: "session_check" });
+    if (!result.success) throw new Error(result.message || "Sesi tidak valid.");
+    applyAuthenticatedUser(result);
+    loginMsg.textContent = "";
+    loginScreen.style.display = "none";
+    appContent.style.display = "block";
+    showApplicationView(activeCategory);
+    fetchData();
+    startRoleNotificationSystem();
+  } catch (error) {
+    clearLocalSession();
+    loginScreen.style.display = "flex";
+    appContent.style.display = "none";
+    loginMsg.textContent = "Sesi berakhir. Silakan login kembali.";
+  }
 }
 
 loginForm.addEventListener("submit", async (e) => {
   e.preventDefault();
   const username = document.getElementById("login-username").value.trim();
-  const password = document.getElementById("login-password").value.trim();
+  const password = document.getElementById("login-password").value;
 
   loginMsg.textContent = "";
   loginSubmit.disabled = true;
   loginSubmit.textContent = "Memeriksa...";
 
   try {
-    const res = await fetch(LOGIN_API_URL, {
-      method: "POST",
-      headers: { "Content-Type": "text/plain;charset=utf-8" },
-      body: JSON.stringify({ type: "login", username, password })
-    });
-    const result = await res.json();
-
+    const result = await apiRequest({ type: "login", username, password }, { auth: false });
     if (result.success) {
-      sessionStorage.setItem("loggedIn", "true");
-      sessionStorage.setItem("userId", username);
-      sessionStorage.setItem("userRole", result.role || "user");
-      sessionStorage.setItem("userBagian", result.bagian || "");
+      applyAuthenticatedUser(result);
       loginScreen.style.display = "none";
       appContent.style.display = "block";
-      roleBadgeText.textContent = "Akses: " + (result.role || "user").toUpperCase() + (result.bagian ? " — " + result.bagian.toUpperCase() : "");
-      applyRoleUI(result.role || "user");
       showApplicationView(activeCategory);
       fetchData();
       startRoleNotificationSystem();
@@ -3357,19 +3421,24 @@ loginForm.addEventListener("submit", async (e) => {
   }
 });
 
-document.getElementById("logout-btn").addEventListener("click", () => {
+document.getElementById("logout-btn").addEventListener("click", async () => {
   stopRoleNotificationSystem();
-  sessionStorage.removeItem("loggedIn");
-  sessionStorage.removeItem("userId");
-  sessionStorage.removeItem("userRole");
-  sessionStorage.removeItem("userBagian");
-  activeCategory = "master";
-  mainBtns.forEach(button => button.classList.toggle("active", button.getAttribute("data-category") === "master"));
-  showApplicationView("master");
-  loginForm.reset();
-  appContent.style.display = "none";
-  loginScreen.style.display = "flex";
+  try {
+    if (sessionStorage.getItem(SESSION_TOKEN_KEY)) await apiRequest({ type: "logout" });
+  } catch (ignore) {
+    // Local logout still proceeds if the network is unavailable.
+  } finally {
+    clearLocalSession();
+    activeCategory = "master";
+    mainBtns.forEach(button => button.classList.toggle("active", button.getAttribute("data-category") === "master"));
+    showApplicationView("master");
+    loginForm.reset();
+    appContent.style.display = "none";
+    loginScreen.style.display = "flex";
+  }
 });
+
+restoreAuthenticatedSession();
 </script>
 
 </body>
