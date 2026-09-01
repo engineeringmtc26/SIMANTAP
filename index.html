@@ -120,8 +120,15 @@ body { font-family: 'Inter', sans-serif; -webkit-font-smoothing: antialiased; }
       </div>
       <div>
         <label class="block font-label-md text-label-md text-outline uppercase mb-xs">Password</label>
-        <input type="password" id="login-password" required
-          class="w-full px-md py-sm bg-surface rounded-lg border border-outline-variant focus:ring-primary focus:border-primary font-body-md text-body-md outline-none">
+        <div class="relative">
+          <input type="password" id="login-password" required
+            class="w-full pl-md pr-12 py-sm bg-surface rounded-lg border border-outline-variant focus:ring-primary focus:border-primary font-body-md text-body-md outline-none">
+          <button type="button" id="login-password-toggle"
+            class="absolute inset-y-0 right-0 w-11 flex items-center justify-center text-outline hover:text-primary border-l border-outline-variant/60 rounded-r-lg transition-colors"
+            aria-label="Tampilkan sandi" aria-pressed="false" title="Tampilkan sandi">
+            <span class="material-symbols-outlined text-[21px]" id="login-password-toggle-icon">visibility_off</span>
+          </button>
+        </div>
       </div>
       <button type="submit" id="login-submit"
         class="mt-sm px-lg py-sm bg-primary text-on-primary rounded-lg font-body-md text-body-md font-semibold hover:opacity-90 transition-opacity">
@@ -734,7 +741,11 @@ function renderRoleNotifications(errorMessage = "") {
     if (!notificationList || !notificationCount || !notificationSummary)
         return;
     const role = (sessionStorage.getItem("userRole") || "user").toLowerCase();
-    const roleLabel = role === "maintenance" ? "Khusus Maintenance" : `Khusus ${sessionStorage.getItem("userBagian") || "User"}`;
+    const roleLabel = role === "maintenance"
+        ? "Khusus Maintenance"
+        : role === "operator"
+            ? "Khusus Operator"
+            : `Khusus ${sessionStorage.getItem("userBagian") || "User"}`;
     if (notificationRoleLabel)
         notificationRoleLabel.textContent = roleLabel;
     const actionableCount = notificationItems.filter(item => item.actionable).length;
@@ -815,29 +826,46 @@ async function refreshRoleNotifications(silent = false) {
                 filterRow: isReopenedNotificationRow
             }
         ]
-        : [
-            {
-                status: "pending_finished",
-                title: "Verifikasi Pekerjaan",
-                description: "Hasil pekerjaan perlu diverifikasi oleh departemen Anda",
-                tone: "action",
-                actionable: true
-            },
-            {
-                status: "rejected",
-                title: "WO Ditolak",
-                description: "WO milik departemen Anda ditolak oleh Maintenance",
-                tone: "warning",
-                actionable: true
-            },
-            {
-                status: "finished",
-                title: "WO Selesai",
-                description: "WO milik departemen Anda telah selesai",
-                tone: "success",
-                actionable: false
-            }
-        ];
+        : role === "operator"
+            ? [
+                {
+                    status: "pending",
+                    title: "Work Request Baru",
+                    description: "Work Request menunggu diterima menjadi Work Order",
+                    tone: "action",
+                    actionable: true
+                },
+                {
+                    status: "approved",
+                    title: "Work Order On Progress",
+                    description: "Work Order dapat diubah menjadi Pending Finished",
+                    tone: "waiting",
+                    actionable: true
+                }
+            ]
+            : [
+                {
+                    status: "pending_finished",
+                    title: "Verifikasi Pekerjaan",
+                    description: "Hasil pekerjaan perlu diverifikasi oleh departemen Anda",
+                    tone: "action",
+                    actionable: true
+                },
+                {
+                    status: "rejected",
+                    title: "WO Ditolak",
+                    description: "WO milik departemen Anda ditolak oleh Maintenance",
+                    tone: "warning",
+                    actionable: true
+                },
+                {
+                    status: "finished",
+                    title: "WO Selesai",
+                    description: "WO milik departemen Anda telah selesai",
+                    tone: "success",
+                    actionable: false
+                }
+            ];
     try {
         const jobs = [];
         descriptors.forEach(descriptor => {
@@ -1065,6 +1093,8 @@ mainBtns.forEach(btn => {
         const role = (sessionStorage.getItem("userRole") || "").toLowerCase();
         if ((requestedView === "dashboard" || requestedView === "equipment_history") && role !== "maintenance")
             return;
+        if (role === "operator" && ["master", "dashboard", "equipment_history"].includes(requestedView))
+            return;
         activeCategory = requestedView;
         mainBtns.forEach(b => b.classList.remove("active"));
         btn.classList.add("active");
@@ -1079,7 +1109,11 @@ mainBtns.forEach(btn => {
 });
 subBtns.forEach(btn => {
     btn.addEventListener("click", () => {
-        activeStatus = btn.getAttribute("data-status");
+        const requestedStatus = btn.getAttribute("data-status");
+        const role = (sessionStorage.getItem("userRole") || "").toLowerCase();
+        if (role === "operator" && !["pending", "approved"].includes(requestedStatus))
+            return;
+        activeStatus = requestedStatus;
         subBtns.forEach(b => b.classList.remove("active"));
         btn.classList.add("active");
         fetchData();
@@ -1140,9 +1174,15 @@ async function fetchData() {
     panel.innerHTML = `<div class="text-center py-lg font-body-md text-body-md text-outline">Memuat data...</div>`;
     currentDataObjects = [];
     globalHeaders = [];
-    const userRole = sessionStorage.getItem("userRole") || "";
+    const userRole = (sessionStorage.getItem("userRole") || "").toLowerCase();
     const userBagian = sessionStorage.getItem("userBagian") || "";
     const filterBagianVal = userRole === "maintenance" ? (filterBagianSelect.value || "") : "";
+    if (userRole === "operator") {
+        if (!["mechanical", "electrical", "modification"].includes(activeCategory))
+            activeCategory = "mechanical";
+        if (!["pending", "approved"].includes(activeStatus))
+            activeStatus = "pending";
+    }
     try {
         if (activeCategory === "master") {
             const result = await apiRequest({
@@ -1398,11 +1438,27 @@ function showModal(originalIndex, reqId, itemCat, itemStat) {
       <div id="action-msg" class="text-center mt-sm font-label-md text-label-md text-outline"></div>
     `;
     }
+    else if (userRole === "operator" && targetItemStatus === "pending") {
+        html += `
+      <div class="mt-md md:mt-lg pt-md border-t border-dashed border-outline-variant flex flex-col sm:flex-row gap-sm" id="action-footer">
+        <button class="flex-1 w-full px-md py-sm rounded-lg font-body-md text-body-md font-semibold text-on-primary bg-secondary hover:opacity-90 transition-opacity" onclick="executeAction('approved')">Terima Work Request → Work Order</button>
+      </div>
+      <div id="action-msg" class="text-center mt-sm font-label-md text-label-md text-outline"></div>
+    `;
+    }
     else if (userRole === "maintenance" && targetItemStatus === "approved") {
         html += `
       <div class="mt-md md:mt-lg pt-md border-t border-dashed border-outline-variant flex flex-col sm:flex-row gap-sm" id="action-footer">
         <button class="flex-1 w-full px-md py-sm rounded-lg font-body-md text-body-md font-semibold text-primary border border-primary hover:bg-primary hover:text-on-primary transition-all" onclick="openEditPersonilMtcForm()">Edit Personil MTC</button>
         <button class="flex-1 w-full px-md py-sm rounded-lg font-body-md text-body-md font-semibold text-on-primary bg-primary hover:opacity-90 transition-opacity" onclick="openPendingFinishedForm()">Selesaikan WO (Kirim ke Pending Finished)</button>
+      </div>
+      <div id="action-msg" class="text-center mt-sm font-label-md text-label-md text-outline"></div>
+    `;
+    }
+    else if (userRole === "operator" && targetItemStatus === "approved") {
+        html += `
+      <div class="mt-md md:mt-lg pt-md border-t border-dashed border-outline-variant flex flex-col sm:flex-row gap-sm" id="action-footer">
+        <button class="flex-1 w-full px-md py-sm rounded-lg font-body-md text-body-md font-semibold text-on-primary bg-primary hover:opacity-90 transition-opacity" onclick="executeAction('pending_finished')">Ubah Status → Pending Finished</button>
       </div>
       <div id="action-msg" class="text-center mt-sm font-label-md text-label-md text-outline"></div>
     `;
@@ -1437,7 +1493,7 @@ function showModal(originalIndex, reqId, itemCat, itemStat) {
       <div id="action-msg" class="text-center mt-sm font-label-md text-label-md text-outline"></div>
     `;
     }
-    if (targetItemStatus === "finished" && userRole !== "maintenance") {
+    if (targetItemStatus === "finished" && userRole === "user") {
         html += `
       <div class="mt-md md:mt-lg pt-md border-t border-dashed border-outline-variant flex flex-col sm:flex-row gap-sm">
         <button class="flex-1 w-full px-md py-sm rounded-lg font-body-md text-body-md font-semibold text-primary border border-primary hover:bg-primary hover:text-on-primary transition-all flex items-center justify-center gap-xs" onclick="exportTicketToPDF()">
@@ -2053,11 +2109,22 @@ ${item[1]}`, sx, y, sigW, 12, { fontSize: 6.1, align: "center" });
 }
 async function executeAction(actionType, extra) {
     extra = extra || {};
+    const currentRole = (sessionStorage.getItem("userRole") || "user").toLowerCase();
+    if (currentRole === "operator" && !["approved", "pending_finished"].includes(actionType)) {
+        alert("Role Operator hanya diizinkan menerima Work Request menjadi Work Order dan mengubah Work Order menjadi Pending Finished.");
+        return;
+    }
     let rejectReason = "";
     let biayaWo = "";
     let personilMtc = extra.personilMtc || "";
     let removedPersonilMtc = extra.removedPersonilMtc || "";
     let photos = extra.photos || [];
+    if (currentRole === "operator") {
+        personilMtc = "";
+        removedPersonilMtc = "";
+        biayaWo = "";
+        photos = [];
+    }
     if (actionType === "rejected") {
         rejectReason = prompt("Mohon masukkan alasan menolak (Reject) tiket ini:");
         if (rejectReason === null || rejectReason.trim() === "") {
@@ -2066,17 +2133,30 @@ async function executeAction(actionType, extra) {
         }
     }
     else if (actionType === "pending_finished") {
-        biayaWo = extra.biayaWo || "";
+        if (currentRole === "operator") {
+            if (!confirm("Ubah status Work Order ini menjadi Pending Finished?"))
+                return;
+        }
+        else {
+            biayaWo = extra.biayaWo || "";
+        }
     }
     else if (actionType === "finished") {
         if (!confirm(`Anda yakin hasil pekerjaan sudah sesuai dan WO dapat diselesaikan?`))
             return;
     }
     else if (actionType === "approved") {
-        personilMtc = extra.personilMtc || "";
-        if (!personilMtc.trim()) {
-            alert("Personil MTC wajib diisi sebelum WO disetujui.");
-            return;
+        if (currentRole === "operator") {
+            if (!confirm("Terima Work Request ini menjadi Work Order?"))
+                return;
+            personilMtc = "";
+        }
+        else {
+            personilMtc = extra.personilMtc || "";
+            if (!personilMtc.trim()) {
+                alert("Personil MTC wajib diisi sebelum WO disetujui.");
+                return;
+            }
         }
     }
     else if (actionType === "update_personil_mtc") {
@@ -2092,11 +2172,10 @@ async function executeAction(actionType, extra) {
     else if (actionType === "update_biaya_finished") {
         biayaWo = extra.biayaWo || "";
     }
-    const usingFormModal = (actionType === "approved"
-        || actionType === "pending_finished"
+    const usingFormModal = ((actionType === "approved" || actionType === "pending_finished") && currentRole !== "operator")
         || actionType === "reopen"
         || actionType === "update_biaya_finished"
-        || actionType === "update_personil_mtc");
+        || actionType === "update_personil_mtc";
     const btnFooter = document.getElementById(usingFormModal ? "form-action-footer" : "action-footer");
     const msgBox = document.getElementById(usingFormModal ? "form-action-msg" : "action-msg");
     const buttons = btnFooter ? btnFooter.querySelectorAll("button") : [];
@@ -3016,15 +3095,55 @@ const appContent = document.getElementById("app-content");
 const loginForm = document.getElementById("login-form");
 const loginMsg = document.getElementById("login-msg");
 const loginSubmit = document.getElementById("login-submit");
+const loginPasswordInput = document.getElementById("login-password");
+const loginPasswordToggle = document.getElementById("login-password-toggle");
+const loginPasswordToggleIcon = document.getElementById("login-password-toggle-icon");
 const roleBadge = document.getElementById("user-role-badge");
 const roleBadgeText = document.getElementById("user-role-badge-text");
+
+loginPasswordToggle.addEventListener("click", () => {
+    const willShow = loginPasswordInput.type === "password";
+    loginPasswordInput.type = willShow ? "text" : "password";
+    loginPasswordToggleIcon.textContent = willShow ? "visibility" : "visibility_off";
+    loginPasswordToggle.setAttribute("aria-label", willShow ? "Sembunyikan sandi" : "Tampilkan sandi");
+    loginPasswordToggle.setAttribute("aria-pressed", willShow ? "true" : "false");
+    loginPasswordToggle.title = willShow ? "Sembunyikan sandi" : "Tampilkan sandi";
+    loginPasswordInput.focus();
+});
 function applyRoleUI(role) {
     const normalizedRole = (role || "").toLowerCase();
-    filterBagianSelect.style.display = normalizedRole === "maintenance" ? "inline-block" : "none";
+    const isMaintenance = normalizedRole === "maintenance";
+    const isOperator = normalizedRole === "operator";
+
+    filterBagianSelect.style.display = isMaintenance ? "inline-block" : "none";
     document.querySelectorAll(".maintenance-only-menu").forEach(button => {
-        button.classList.toggle("hidden", normalizedRole !== "maintenance");
+        button.classList.toggle("hidden", !isMaintenance);
     });
-    if (normalizedRole !== "maintenance" && (activeCategory === "dashboard" || activeCategory === "equipment_history")) {
+
+    mainBtns.forEach(button => {
+        const category = button.getAttribute("data-category");
+        const operatorBlocked = isOperator && ["master", "dashboard", "equipment_history"].includes(category);
+        if (!button.classList.contains("maintenance-only-menu"))
+            button.classList.toggle("hidden", operatorBlocked);
+    });
+
+    subBtns.forEach(button => {
+        const status = button.getAttribute("data-status");
+        button.classList.toggle("hidden", isOperator && !["pending", "approved"].includes(status));
+    });
+
+    if (isOperator) {
+        if (!["mechanical", "electrical", "modification"].includes(activeCategory))
+            activeCategory = "mechanical";
+        if (!["pending", "approved"].includes(activeStatus))
+            activeStatus = "pending";
+        mainBtns.forEach(button => button.classList.toggle("active", button.getAttribute("data-category") === activeCategory));
+        subBtns.forEach(button => button.classList.toggle("active", button.getAttribute("data-status") === activeStatus));
+        showApplicationView(activeCategory);
+        return;
+    }
+
+    if (!isMaintenance && (activeCategory === "dashboard" || activeCategory === "equipment_history")) {
         activeCategory = "master";
         mainBtns.forEach(button => button.classList.toggle("active", button.getAttribute("data-category") === "master"));
         showApplicationView("master");
@@ -3101,6 +3220,11 @@ document.getElementById("logout-btn").addEventListener("click", async () => {
         mainBtns.forEach(button => button.classList.toggle("active", button.getAttribute("data-category") === "master"));
         showApplicationView("master");
         loginForm.reset();
+        loginPasswordInput.type = "password";
+        loginPasswordToggleIcon.textContent = "visibility_off";
+        loginPasswordToggle.setAttribute("aria-label", "Tampilkan sandi");
+        loginPasswordToggle.setAttribute("aria-pressed", "false");
+        loginPasswordToggle.title = "Tampilkan sandi";
         appContent.style.display = "none";
         loginScreen.style.display = "flex";
     }
