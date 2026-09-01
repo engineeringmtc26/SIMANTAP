@@ -1093,8 +1093,6 @@ mainBtns.forEach(btn => {
         const role = (sessionStorage.getItem("userRole") || "").toLowerCase();
         if ((requestedView === "dashboard" || requestedView === "equipment_history") && role !== "maintenance")
             return;
-        if (role === "operator" && ["master", "dashboard", "equipment_history"].includes(requestedView))
-            return;
         activeCategory = requestedView;
         mainBtns.forEach(b => b.classList.remove("active"));
         btn.classList.add("active");
@@ -1178,8 +1176,8 @@ async function fetchData() {
     const userBagian = sessionStorage.getItem("userBagian") || "";
     const filterBagianVal = userRole === "maintenance" ? (filterBagianSelect.value || "") : "";
     if (userRole === "operator") {
-        if (!["mechanical", "electrical", "modification"].includes(activeCategory))
-            activeCategory = "mechanical";
+        if (!["master", "mechanical", "electrical", "modification"].includes(activeCategory))
+            activeCategory = "master";
         if (!["pending", "approved"].includes(activeStatus))
             activeStatus = "pending";
     }
@@ -1223,7 +1221,9 @@ async function fetchData() {
             }));
         }
         if (currentDataObjects.length === 0) {
-            let t = activeCategory === "master" ? "Data Master WO" : `Data ${activeCategory}`;
+            let t = activeCategory === "master"
+                ? (userRole === "operator" ? "Work Order Menunggu Persetujuan Pending Finished" : "Data Master WO")
+                : `Data ${activeCategory}`;
             panelTitleEl.textContent = t;
             summaryCountEl.textContent = "00";
             summaryLabelEl.textContent = "0 TIKET DITEMUKAN";
@@ -1260,7 +1260,10 @@ const STATUS_DOT_CLASSES = {
     rejected: "bg-error"
 };
 function renderData() {
-    let title = activeCategory === "master" ? "Seluruh Data Master WO" : `Data ${activeCategory} - ${activeStatus}`;
+    const currentRole = (sessionStorage.getItem("userRole") || "").toLowerCase();
+    let title = activeCategory === "master"
+        ? (currentRole === "operator" ? "Work Order Menunggu Persetujuan Pending Finished" : "Seluruh Data Master WO")
+        : `Data ${activeCategory} - ${activeStatus}`;
     const cols = findColumnsIndex(globalHeaders);
     const filterVal = filterType.value;
     const d1 = date1Input.value;
@@ -3122,7 +3125,7 @@ function applyRoleUI(role) {
 
     mainBtns.forEach(button => {
         const category = button.getAttribute("data-category");
-        const operatorBlocked = isOperator && ["master", "dashboard", "equipment_history"].includes(category);
+        const operatorBlocked = isOperator && ["dashboard", "equipment_history"].includes(category);
         if (!button.classList.contains("maintenance-only-menu"))
             button.classList.toggle("hidden", operatorBlocked);
     });
@@ -3133,8 +3136,8 @@ function applyRoleUI(role) {
     });
 
     if (isOperator) {
-        if (!["mechanical", "electrical", "modification"].includes(activeCategory))
-            activeCategory = "mechanical";
+        if (!["master", "mechanical", "electrical", "modification"].includes(activeCategory))
+            activeCategory = "master";
         if (!["pending", "approved"].includes(activeStatus))
             activeStatus = "pending";
         mainBtns.forEach(button => button.classList.toggle("active", button.getAttribute("data-category") === activeCategory));
